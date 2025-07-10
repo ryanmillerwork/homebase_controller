@@ -1559,13 +1559,9 @@ function handleUserSelection(val, host, type) {
     case "branch":
       // Construct the command with the selected branch
       console.log(`Branch selected: ${val} for host: ${host}`);
-
-      const system = userSelections.value[host]?.system || "";
-      const protocol = userSelections.value[host]?.protocol || "";
-      const variant = userSelections.value[host]?.variant || "";
-
-      const command = `send git ::git::switch_and_pull ${val}; ::ess::stop; ::ess::load_system ${system} ${protocol} ${variant}`;
-      sendMessage("esscmd", host, command);
+      sendMessage("gitcmd", host, `::git::switch_and_pull ${val}`);
+      // sendMessage("esscmd", host, `::ess::pull`);
+      // sendMessage("esscmd", host, "::ess::reload_system");
       // msg is not set here, direct send
       break;
     default:

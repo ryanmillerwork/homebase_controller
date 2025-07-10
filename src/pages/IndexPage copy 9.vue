@@ -205,24 +205,11 @@
                       "
                       label="Branch"
                       dense
+                      @update:model-value="
+                        (val) =>
+                          handleUserSelection(val, device.address, 'branch')
+                      "
                     >
-                      <template v-slot:option="scope">
-                        <q-item
-                          v-bind="scope.itemProps"
-                          style="padding-left: 16px"
-                          @click="
-                            handleUserSelection(
-                              scope.opt,
-                              device.address,
-                              'branch'
-                            )
-                          "
-                        >
-                          <q-item-section>
-                            <q-item-label>{{ scope.opt }}</q-item-label>
-                          </q-item-section>
-                        </q-item>
-                      </template>
                       <template v-slot:selected-item="scope">
                         <div
                           class="hard-truncate"
@@ -1559,13 +1546,9 @@ function handleUserSelection(val, host, type) {
     case "branch":
       // Construct the command with the selected branch
       console.log(`Branch selected: ${val} for host: ${host}`);
-
-      const system = userSelections.value[host]?.system || "";
-      const protocol = userSelections.value[host]?.protocol || "";
-      const variant = userSelections.value[host]?.variant || "";
-
-      const command = `send git ::git::switch_and_pull ${val}; ::ess::stop; ::ess::load_system ${system} ${protocol} ${variant}`;
-      sendMessage("esscmd", host, command);
+      sendMessage("gitcmd", host, `::git::switch_and_pull ${val}`);
+      // sendMessage("esscmd", host, `::ess::pull`);
+      // sendMessage("esscmd", host, "::ess::reload_system");
       // msg is not set here, direct send
       break;
     default:

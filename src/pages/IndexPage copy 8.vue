@@ -155,165 +155,148 @@
             </div>
           </template>
 
-          <q-card>
+          <q-card style="position: relative">
             <q-card-section>
-              <div style="position: relative">
-                <div
-                  v-if="getLoadingDeviceStatus(device.address)"
-                  class="loading-overlay items-center justify-center"
-                >
-                  <q-spinner-hourglass size="3em" color="primary" />
+              <div
+                v-if="getLoadingDeviceStatus(device.address)"
+                class="loading-overlay items-center justify-center"
+              >
+                <q-spinner-hourglass size="3em" color="primary" />
+              </div>
+
+              <div class="row align-items-center">
+                <div class="col-6 col-sm-6 q-mb-xs">
+                  <q-select
+                    outlined
+                    :model-value="userSelections[device.address]?.subject"
+                    :options="dropdowns[device.address]?.animalOptions || []"
+                    :disable="
+                      getRunningStatus(device.address) ||
+                      getLoadingDeviceStatus(device.address)
+                    "
+                    label="Subject"
+                    dense
+                    @input-value="(val) => (inputValue = val)"
+                    @update:model-value="
+                      (val) =>
+                        handleUserSelection(val, device.address, 'subject')
+                    "
+                  >
+                    <template v-slot:selected-item="scope">
+                      <div
+                        class="hard-truncate"
+                        :title="String(getSlotDisplayValue(scope.opt))"
+                      >
+                        {{ getSlotDisplayValue(scope.opt) }}
+                      </div>
+                    </template>
+                  </q-select>
                 </div>
 
-                <div class="row align-items-center">
-                  <div class="col-6 col-sm-6 q-mb-xs">
-                    <q-select
-                      outlined
-                      :model-value="userSelections[device.address]?.subject"
-                      :options="dropdowns[device.address]?.animalOptions || []"
-                      :disable="
-                        getRunningStatus(device.address) ||
-                        getLoadingDeviceStatus(device.address)
-                      "
-                      label="Subject"
-                      dense
-                      @input-value="(val) => (inputValue = val)"
-                      @update:model-value="
-                        (val) =>
-                          handleUserSelection(val, device.address, 'subject')
-                      "
-                    >
-                      <template v-slot:selected-item="scope">
-                        <div
-                          class="hard-truncate"
-                          :title="String(getSlotDisplayValue(scope.opt))"
-                        >
-                          {{ getSlotDisplayValue(scope.opt) }}
-                        </div>
-                      </template>
-                    </q-select>
-                  </div>
-
-                  <div class="col-6 col-sm-6 q-mb-xs">
-                    <q-select
-                      outlined
-                      :model-value="userSelections[device.address]?.branch"
-                      :options="dropdowns[device.address]?.branchOptions || []"
-                      :disable="
-                        getRunningStatus(device.address) ||
-                        getLoadingDeviceStatus(device.address)
-                      "
-                      label="Branch"
-                      dense
-                    >
-                      <template v-slot:option="scope">
-                        <q-item
-                          v-bind="scope.itemProps"
-                          style="padding-left: 16px"
-                          @click="
-                            handleUserSelection(
-                              scope.opt,
-                              device.address,
-                              'branch'
-                            )
-                          "
-                        >
-                          <q-item-section>
-                            <q-item-label>{{ scope.opt }}</q-item-label>
-                          </q-item-section>
-                        </q-item>
-                      </template>
-                      <template v-slot:selected-item="scope">
-                        <div
-                          class="hard-truncate"
-                          :title="String(getSlotDisplayValue(scope.opt))"
-                        >
-                          {{ getSlotDisplayValue(scope.opt) }}
-                        </div>
-                      </template>
-                    </q-select>
-                  </div>
+                <div class="col-6 col-sm-6 q-mb-xs">
+                  <q-select
+                    outlined
+                    :model-value="userSelections[device.address]?.branch"
+                    :options="dropdowns[device.address]?.branchOptions || []"
+                    :disable="
+                      getRunningStatus(device.address) ||
+                      getLoadingDeviceStatus(device.address)
+                    "
+                    label="Branch"
+                    dense
+                    @update:model-value="
+                      (val) =>
+                        handleUserSelection(val, device.address, 'branch')
+                    "
+                  >
+                    <template v-slot:selected-item="scope">
+                      <div
+                        class="hard-truncate"
+                        :title="String(getSlotDisplayValue(scope.opt))"
+                      >
+                        {{ getSlotDisplayValue(scope.opt) }}
+                      </div>
+                    </template>
+                  </q-select>
                 </div>
-                <div class="row align-items-center">
-                  <div class="col-4 col-sm-4 q-mb-xs">
-                    <q-select
-                      :model-value="userSelections[device.address]?.system"
-                      :options="dropdowns[device.address]?.systemOptions || []"
-                      :disable="
-                        getRunningStatus(device.address) ||
-                        getLoadingDeviceStatus(device.address)
-                      "
-                      label="System"
-                      dense
-                      @update:model-value="
-                        (val) =>
-                          handleUserSelection(val, device.address, 'system')
-                      "
-                    >
-                      <template v-slot:selected-item="scope">
-                        <div
-                          class="hard-truncate"
-                          :title="String(getSlotDisplayValue(scope.opt))"
-                        >
-                          {{ getSlotDisplayValue(scope.opt) }}
-                        </div>
-                      </template>
-                    </q-select>
-                  </div>
+              </div>
+              <div class="row align-items-center">
+                <div class="col-4 col-sm-4 q-mb-xs">
+                  <q-select
+                    :model-value="userSelections[device.address]?.system"
+                    :options="dropdowns[device.address]?.systemOptions || []"
+                    :disable="
+                      getRunningStatus(device.address) ||
+                      getLoadingDeviceStatus(device.address)
+                    "
+                    label="System"
+                    dense
+                    @update:model-value="
+                      (val) =>
+                        handleUserSelection(val, device.address, 'system')
+                    "
+                  >
+                    <template v-slot:selected-item="scope">
+                      <div
+                        class="hard-truncate"
+                        :title="String(getSlotDisplayValue(scope.opt))"
+                      >
+                        {{ getSlotDisplayValue(scope.opt) }}
+                      </div>
+                    </template>
+                  </q-select>
+                </div>
 
-                  <div class="col-4 col-sm-4 q-mb-xs">
-                    <q-select
-                      :model-value="userSelections[device.address]?.protocol"
-                      :options="
-                        dropdowns[device.address]?.protocolOptions || []
-                      "
-                      :disable="
-                        getRunningStatus(device.address) ||
-                        getLoadingDeviceStatus(device.address)
-                      "
-                      label="Protocol"
-                      dense
-                      @update:model-value="
-                        (val) =>
-                          handleUserSelection(val, device.address, 'protocol')
-                      "
-                    >
-                      <template v-slot:selected-item="scope">
-                        <div
-                          class="hard-truncate"
-                          :title="String(getSlotDisplayValue(scope.opt))"
-                        >
-                          {{ getSlotDisplayValue(scope.opt) }}
-                        </div>
-                      </template>
-                    </q-select>
-                  </div>
+                <div class="col-4 col-sm-4 q-mb-xs">
+                  <q-select
+                    :model-value="userSelections[device.address]?.protocol"
+                    :options="dropdowns[device.address]?.protocolOptions || []"
+                    :disable="
+                      getRunningStatus(device.address) ||
+                      getLoadingDeviceStatus(device.address)
+                    "
+                    label="Protocol"
+                    dense
+                    @update:model-value="
+                      (val) =>
+                        handleUserSelection(val, device.address, 'protocol')
+                    "
+                  >
+                    <template v-slot:selected-item="scope">
+                      <div
+                        class="hard-truncate"
+                        :title="String(getSlotDisplayValue(scope.opt))"
+                      >
+                        {{ getSlotDisplayValue(scope.opt) }}
+                      </div>
+                    </template>
+                  </q-select>
+                </div>
 
-                  <div class="col-4 col-sm-4 q-mb-xs">
-                    <q-select
-                      :model-value="userSelections[device.address]?.variant"
-                      :options="dropdowns[device.address]?.variantOptions || []"
-                      :disable="
-                        getRunningStatus(device.address) ||
-                        getLoadingDeviceStatus(device.address)
-                      "
-                      label="Variant"
-                      dense
-                      @update:model-value="
-                        (val) =>
-                          handleUserSelection(val, device.address, 'variant')
-                      "
-                    >
-                      <template v-slot:selected-item="scope">
-                        <div
-                          class="hard-truncate"
-                          :title="String(getSlotDisplayValue(scope.opt))"
-                        >
-                          {{ getSlotDisplayValue(scope.opt) }}
-                        </div>
-                      </template>
-                    </q-select>
-                  </div>
+                <div class="col-4 col-sm-4 q-mb-xs">
+                  <q-select
+                    :model-value="userSelections[device.address]?.variant"
+                    :options="dropdowns[device.address]?.variantOptions || []"
+                    :disable="
+                      getRunningStatus(device.address) ||
+                      getLoadingDeviceStatus(device.address)
+                    "
+                    label="Variant"
+                    dense
+                    @update:model-value="
+                      (val) =>
+                        handleUserSelection(val, device.address, 'variant')
+                    "
+                  >
+                    <template v-slot:selected-item="scope">
+                      <div
+                        class="hard-truncate"
+                        :title="String(getSlotDisplayValue(scope.opt))"
+                      >
+                        {{ getSlotDisplayValue(scope.opt) }}
+                      </div>
+                    </template>
+                  </q-select>
                 </div>
               </div>
               <div>
@@ -1559,13 +1542,9 @@ function handleUserSelection(val, host, type) {
     case "branch":
       // Construct the command with the selected branch
       console.log(`Branch selected: ${val} for host: ${host}`);
-
-      const system = userSelections.value[host]?.system || "";
-      const protocol = userSelections.value[host]?.protocol || "";
-      const variant = userSelections.value[host]?.variant || "";
-
-      const command = `send git ::git::switch_and_pull ${val}; ::ess::stop; ::ess::load_system ${system} ${protocol} ${variant}`;
-      sendMessage("esscmd", host, command);
+      sendMessage("gitcmd", host, `::git::switch_and_pull ${val}`);
+      // sendMessage("esscmd", host, `::ess::pull`);
+      // sendMessage("esscmd", host, "::ess::reload_system");
       // msg is not set here, direct send
       break;
     default:

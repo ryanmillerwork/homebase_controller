@@ -40,41 +40,9 @@
 
               <!-- Box and subject names -->
               <div class="col-auto">
-                <div
-                  class="host-text"
-                  style="position: relative; display: inline-block"
-                >
-                  {{ device.device }}
-
-                  <!-- only show tooltip if we have a screenshot for this device -->
-
-                  <q-tooltip
-                    v-if="imageSourcesByHost[device.address]?.screenshotSrc"
-                    anchor="bottom middle"
-                    self="top middle"
-                  >
-                    <img
-                      :src="imageSourcesByHost[device.address].screenshotSrc"
-                      alt="screenshot"
-                      style="max-width: 200px; border-radius: 4px"
-                    />
-                  </q-tooltip>
-                </div>
-
+                <div class="host-text">{{ device.device }}</div>
                 <div class="subject-caption">
                   {{ getsubject(device.address) }}
-
-                  <q-tooltip
-                    v-if="imageSourcesByHost[device.address]?.photoCartoonSrc"
-                    anchor="bottom middle"
-                    self="top middle"
-                  >
-                    <img
-                      :src="imageSourcesByHost[device.address].photoCartoonSrc"
-                      alt="cartoon photo"
-                      style="max-width: 200px; border-radius: 4px"
-                    />
-                  </q-tooltip>
                 </div>
               </div>
 
@@ -157,163 +125,67 @@
 
           <q-card>
             <q-card-section>
-              <div style="position: relative">
-                <div
-                  v-if="getLoadingDeviceStatus(device.address)"
-                  class="loading-overlay items-center justify-center"
-                >
-                  <q-spinner-hourglass size="3em" color="primary" />
+              <div class="row align-items-center">
+                <div class="col-6 col-sm-3 q-mb-xs">
+                  <q-select
+                    outlined
+                    class="text-truncate"
+                    :model-value="userSelections[device.address]?.subject"
+                    :options="dropdowns[device.address]?.animalOptions || []"
+                    :disable="getRunningStatus(device.address)"
+                    label="Subject"
+                    dense
+                    @input-value="(val) => (inputValue = val)"
+                    @update:model-value="
+                      (val) =>
+                        handleUserSelection(val, device.address, 'subject')
+                    "
+                  />
                 </div>
 
-                <div class="row align-items-center">
-                  <div class="col-6 col-sm-6 q-mb-xs">
-                    <q-select
-                      outlined
-                      :model-value="userSelections[device.address]?.subject"
-                      :options="dropdowns[device.address]?.animalOptions || []"
-                      :disable="
-                        getRunningStatus(device.address) ||
-                        getLoadingDeviceStatus(device.address)
-                      "
-                      label="Subject"
-                      dense
-                      @input-value="(val) => (inputValue = val)"
-                      @update:model-value="
-                        (val) =>
-                          handleUserSelection(val, device.address, 'subject')
-                      "
-                    >
-                      <template v-slot:selected-item="scope">
-                        <div
-                          class="hard-truncate"
-                          :title="String(getSlotDisplayValue(scope.opt))"
-                        >
-                          {{ getSlotDisplayValue(scope.opt) }}
-                        </div>
-                      </template>
-                    </q-select>
-                  </div>
-
-                  <div class="col-6 col-sm-6 q-mb-xs">
-                    <q-select
-                      outlined
-                      :model-value="userSelections[device.address]?.branch"
-                      :options="dropdowns[device.address]?.branchOptions || []"
-                      :disable="
-                        getRunningStatus(device.address) ||
-                        getLoadingDeviceStatus(device.address)
-                      "
-                      label="Branch"
-                      dense
-                    >
-                      <template v-slot:option="scope">
-                        <q-item
-                          v-bind="scope.itemProps"
-                          style="padding-left: 16px"
-                          @click="
-                            handleUserSelection(
-                              scope.opt,
-                              device.address,
-                              'branch'
-                            )
-                          "
-                        >
-                          <q-item-section>
-                            <q-item-label>{{ scope.opt }}</q-item-label>
-                          </q-item-section>
-                        </q-item>
-                      </template>
-                      <template v-slot:selected-item="scope">
-                        <div
-                          class="hard-truncate"
-                          :title="String(getSlotDisplayValue(scope.opt))"
-                        >
-                          {{ getSlotDisplayValue(scope.opt) }}
-                        </div>
-                      </template>
-                    </q-select>
-                  </div>
+                <div class="col-6 col-sm-3 q-mb-xs">
+                  <q-select
+                    class="text-truncate"
+                    :model-value="userSelections[device.address]?.system"
+                    :options="dropdowns[device.address]?.systemOptions || []"
+                    :disable="getRunningStatus(device.address)"
+                    label="System"
+                    dense
+                    @update:model-value="
+                      (val) =>
+                        handleUserSelection(val, device.address, 'system')
+                    "
+                  ></q-select>
                 </div>
-                <div class="row align-items-center">
-                  <div class="col-4 col-sm-4 q-mb-xs">
-                    <q-select
-                      :model-value="userSelections[device.address]?.system"
-                      :options="dropdowns[device.address]?.systemOptions || []"
-                      :disable="
-                        getRunningStatus(device.address) ||
-                        getLoadingDeviceStatus(device.address)
-                      "
-                      label="System"
-                      dense
-                      @update:model-value="
-                        (val) =>
-                          handleUserSelection(val, device.address, 'system')
-                      "
-                    >
-                      <template v-slot:selected-item="scope">
-                        <div
-                          class="hard-truncate"
-                          :title="String(getSlotDisplayValue(scope.opt))"
-                        >
-                          {{ getSlotDisplayValue(scope.opt) }}
-                        </div>
-                      </template>
-                    </q-select>
-                  </div>
 
-                  <div class="col-4 col-sm-4 q-mb-xs">
-                    <q-select
-                      :model-value="userSelections[device.address]?.protocol"
-                      :options="
-                        dropdowns[device.address]?.protocolOptions || []
-                      "
-                      :disable="
-                        getRunningStatus(device.address) ||
-                        getLoadingDeviceStatus(device.address)
-                      "
-                      label="Protocol"
-                      dense
-                      @update:model-value="
-                        (val) =>
-                          handleUserSelection(val, device.address, 'protocol')
-                      "
-                    >
-                      <template v-slot:selected-item="scope">
-                        <div
-                          class="hard-truncate"
-                          :title="String(getSlotDisplayValue(scope.opt))"
-                        >
-                          {{ getSlotDisplayValue(scope.opt) }}
-                        </div>
-                      </template>
-                    </q-select>
-                  </div>
+                <div class="col-6 col-sm-3 q-mb-xs">
+                  <q-select
+                    class="text-truncate"
+                    :model-value="userSelections[device.address]?.protocol"
+                    :options="dropdowns[device.address]?.protocolOptions || []"
+                    :disable="getRunningStatus(device.address)"
+                    label="Protocol"
+                    dense
+                    @update:model-value="
+                      (val) =>
+                        handleUserSelection(val, device.address, 'protocol')
+                    "
+                  ></q-select>
+                </div>
 
-                  <div class="col-4 col-sm-4 q-mb-xs">
-                    <q-select
-                      :model-value="userSelections[device.address]?.variant"
-                      :options="dropdowns[device.address]?.variantOptions || []"
-                      :disable="
-                        getRunningStatus(device.address) ||
-                        getLoadingDeviceStatus(device.address)
-                      "
-                      label="Variant"
-                      dense
-                      @update:model-value="
-                        (val) =>
-                          handleUserSelection(val, device.address, 'variant')
-                      "
-                    >
-                      <template v-slot:selected-item="scope">
-                        <div
-                          class="hard-truncate"
-                          :title="String(getSlotDisplayValue(scope.opt))"
-                        >
-                          {{ getSlotDisplayValue(scope.opt) }}
-                        </div>
-                      </template>
-                    </q-select>
-                  </div>
+                <div class="col-6 col-sm-3 q-mb-xs">
+                  <q-select
+                    class="text-truncate"
+                    :model-value="userSelections[device.address]?.variant"
+                    :options="dropdowns[device.address]?.variantOptions || []"
+                    :disable="getRunningStatus(device.address)"
+                    label="Variant"
+                    dense
+                    @update:model-value="
+                      (val) =>
+                        handleUserSelection(val, device.address, 'variant')
+                    "
+                  ></q-select>
                 </div>
               </div>
               <div>
@@ -326,7 +198,6 @@
                     style="width: 48%; height: 55px"
                     label="Task parameters"
                     @click="openParamsDialog(device.address)"
-                    :disable="getLoadingDeviceStatus(device.address)"
                   ></q-btn>
 
                   <!-- Button to open system parameter picker -->
@@ -337,13 +208,102 @@
                     style="width: 48%; height: 55px"
                     label="System parameters"
                     @click="openSystemParamsDialog(device.address)"
-                    :disable="getLoadingDeviceStatus(device.address)"
                   ></q-btn>
                 </div>
               </div>
+              <q-dialog v-model="showParamsDialog" persistent>
+                <q-card style="min-width: 300px">
+                  <q-card-section class="text-h6">
+                    Task Parameters
+                  </q-card-section>
+                  <q-card-section>
+                    <div v-if="paramsForTask?.paramNames?.length">
+                      <div
+                        v-for="(name, idx) in paramsForTask.paramNames"
+                        :key="idx"
+                        class="q-mb-md"
+                      >
+                        <q-select
+                          v-model="paramsForTask.selectedParams[name]"
+                          :options="paramsForTask.paramOptions[name]"
+                          :label="name"
+                          filled
+                          dense
+                          emit-value
+                          map-options
+                        />
+                      </div>
+                    </div>
+                    <div v-else>
+                      <em>No parameter data found</em>
+                    </div>
+                  </q-card-section>
+                  <q-card-actions align="right">
+                    <q-btn
+                      flat
+                      label="Cancel"
+                      color="primary"
+                      @click="showParamsDialog = false"
+                    />
+                    <q-btn
+                      flat
+                      label="Save"
+                      color="primary"
+                      :disable="getRunningStatus(device.address)"
+                      @click="saveTaskParams"
+                    />
+                  </q-card-actions>
+                </q-card>
+              </q-dialog>
+
+              <q-dialog v-model="showSystemParamsDialog" persistent>
+                <q-card style="min-width: 300px">
+                  <q-card-section class="text-h6">
+                    System Parameters
+                  </q-card-section>
+                  <q-card-section>
+                    <div
+                      v-if="paramsForHost[selectedSystemHost]?.names?.length"
+                    >
+                      <div
+                        v-for="(name, idx) in paramsForHost[selectedSystemHost]
+                          .names"
+                        :key="idx"
+                        class="q-mb-md"
+                      >
+                        <q-input
+                          :modelValue="getDisplayValue(name)"
+                          @update:modelValue="markAsEdited(name, $event)"
+                          :label="name"
+                          :class="getInputClass(name)"
+                          filled
+                          dense
+                        />
+                      </div>
+                    </div>
+                    <div v-else>
+                      <em>No parameter data found</em>
+                    </div>
+                  </q-card-section>
+                  <q-card-actions align="right">
+                    <q-btn
+                      flat
+                      label="Cancel"
+                      color="primary"
+                      @click="closeSystemParamsDialog"
+                    />
+                    <q-btn
+                      flat
+                      label="Save"
+                      color="primary"
+                      @click="saveSystemTaskParams(device.address)"
+                    />
+                  </q-card-actions>
+                </q-card>
+              </q-dialog>
 
               <div class="q-mt-md row items-center">
-                <div class="col-12 col-sm-6 flex items-center">
+                <div class="col-12 col-sm-8 flex items-center">
                   <q-btn-toggle
                     :model-value="getRunningStatus(device.address)"
                     flat
@@ -395,24 +355,14 @@
                     </template>
                   </q-btn-toggle>
                 </div>
-                <div class="col-6 col-sm-3 flex items-center">
+                <div class="col-12 col-sm-4 flex items-center">
                   <q-btn
                     flat
                     label="Reset"
+                    color="white"
                     text-color="black"
                     icon-right="restart_alt"
                     @click="resetTask(device.address)"
-                    class="full-width"
-                    style="height: 60px"
-                  ></q-btn>
-                </div>
-                <div class="col-6 col-sm-3 flex items-center">
-                  <q-btn
-                    flat
-                    label="Reward"
-                    text-color="black"
-                    icon-right="sym_o_water_drop"
-                    @click="juice_reward(device.address)"
                     class="full-width"
                     style="height: 60px"
                   ></q-btn>
@@ -533,162 +483,18 @@
           style="width: 100%"
           @click="showQueryBuilderDialog = true"
         ></q-btn>
+        <QueryDialog
+          v-model="showQueryBuilderDialog"
+          v-model:sqlTableResponse="sql_table_response"
+          v-model:listboxOptions="listboxOptions"
+          :fields="fields"
+        />
       </div>
     </div>
-
-    <q-dialog
-      v-model="showParamsDialog"
-      persistent
-      @show="onTaskModalShow"
-      @hide="onTaskModalHide"
-    >
-      <q-card class="modal-card">
-        <q-card-section class="modal-header text-h6">
-          Task Parameters
-        </q-card-section>
-
-        <div
-          class="q-card__section q-card__section--vert modal-body"
-          ref="taskModalBodyEl"
-        >
-          <div v-if="paramsForTask?.paramNames?.length">
-            <div
-              v-for="(name, idx) in paramsForTask.paramNames"
-              :key="idx"
-              class="q-mb-md"
-            >
-              <q-select
-                :model-value="getTaskDisplayValue(name)"
-                @update:model-value="markTaskAsEdited(name, $event)"
-                :options="paramsForTask.paramOptions[name]"
-                :label="name"
-                :class="getTaskInputClass(name)"
-                filled
-                dense
-                emit-value
-                map-options
-              >
-                <template v-slot:selected>
-                  {{
-                    getLabelForValue(
-                      getTaskDisplayValue(name),
-                      paramsForTask.paramOptions[name]
-                    )
-                  }}
-                </template>
-              </q-select>
-            </div>
-          </div>
-          <div v-else>
-            <em>No parameter data found</em>
-          </div>
-        </div>
-
-        <q-card-section class="modal-footer">
-          <q-separator />
-          <div class="row justify-end q-gutter-sm q-mt-sm">
-            <q-btn
-              flat
-              label="Cancel"
-              color="primary"
-              @click="closeTaskParamsDialog"
-            />
-            <q-btn
-              flat
-              label="Save"
-              color="primary"
-              :disable="getRunningStatus(selectedHost)"
-              @click="saveTaskParams"
-            />
-          </div>
-        </q-card-section>
-        <div v-if="showTaskScrollIndicator" class="scroll-indicator-wrapper">
-          <q-icon
-            name="keyboard_arrow_down"
-            class="scroll-indicator"
-            size="2.5em"
-          />
-        </div>
-      </q-card>
-    </q-dialog>
-
-    <q-dialog
-      v-model="showSystemParamsDialog"
-      persistent
-      @show="onSystemModalShow"
-      @hide="onSystemModalHide"
-    >
-      <q-card class="modal-card">
-        <q-card-section class="modal-header text-h6">
-          System Parameters
-        </q-card-section>
-
-        <div
-          class="q-card__section q-card__section--vert modal-body"
-          ref="systemModalBodyEl"
-        >
-          <div v-if="paramsForHost[selectedSystemHost]?.names?.length">
-            <div
-              v-for="(name, idx) in paramsForHost[selectedSystemHost].names"
-              :key="idx"
-              class="q-mb-md"
-            >
-              <q-input
-                :modelValue="getDisplayValue(name)"
-                @update:modelValue="markAsEdited(name, $event)"
-                :label="name"
-                :class="getInputClass(name)"
-                filled
-                dense
-              />
-            </div>
-          </div>
-          <div v-else>
-            <em>No parameter data found</em>
-          </div>
-        </div>
-
-        <q-card-section class="modal-footer">
-          <q-separator />
-          <div class="row justify-end q-gutter-sm q-mt-sm">
-            <q-btn
-              flat
-              label="Cancel"
-              color="primary"
-              @click="closeSystemParamsDialog"
-            />
-            <q-btn
-              flat
-              label="Save"
-              color="primary"
-              @click="saveSystemTaskParams(selectedSystemHost)"
-              :disable="getRunningStatus(selectedSystemHost)"
-            />
-          </div>
-        </q-card-section>
-        <div v-if="showSystemScrollIndicator" class="scroll-indicator-wrapper">
-          <q-icon
-            name="keyboard_arrow_down"
-            class="scroll-indicator"
-            size="2.5em"
-          />
-        </div>
-      </q-card>
-    </q-dialog>
   </div>
-
-  <div v-if="screenshotSrc" class="q-pa-md">
-    <h6>Latest Screenshot:</h6>
-    <img
-      :src="screenshotSrc"
-      alt="Device screenshot"
-      style="max-width: 100%; border: 1px solid #ccc; border-radius: 4px"
-    />
+  <div>
+    {{ paramsForHost[selectedSystemHost]?.values }}
   </div>
-
-  <!-- {{ statusData }} -->
-  <!-- <div>Selected system Host: {{ selectedSystemHost }}</div> -->
-  <!-- <div>Selected param Host: {{ selectedHost }}</div> -->
 </template>
 
 <!--   {{ statusData }} -->
@@ -715,26 +521,10 @@ No matching data
 </div> -->
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, h, computed, nextTick } from "vue"; // MIT License
+import { ref, onMounted, onUnmounted, watch, h, computed } from "vue"; // MIT License
 import { useQuasar } from "quasar"; // MIT License
 import useWebSocket, { sendMessage } from "src/composables/useWebSocket";
 import QueryDialog from "src/components/QueryDialog.vue";
-
-const thumbStyle = {
-  right: "4px",
-  borderRadius: "5px",
-  backgroundColor: "#027be3",
-  width: "5px",
-  opacity: 0.75,
-};
-
-const barStyle = {
-  right: "2px",
-  borderRadius: "9px",
-  backgroundColor: "#027be3",
-  width: "9px",
-  opacity: 0.2,
-};
 
 const $q = useQuasar(); // used for notifications
 
@@ -744,7 +534,6 @@ const perfStatsFull = ref([]);
 const dropdowns = ref({});
 const userSelections = ref({});
 const runningStatus = ref({});
-const loadingDeviceStatus = ref({}); // Added for loading state
 const showAddOptionsDialog = ref(false);
 const showQueryBuilderDialog = ref(false);
 
@@ -753,9 +542,6 @@ const paramNames = ref([]); // e.g. ["nr", "nplanks", ...]
 const paramOptions = ref({}); // e.g. { nr: [50,100,200], nplanks: [1], ... }
 const selectedParams = ref({}); // e.g. { nr: 50, nplanks: 1, ... }
 const selectedHost = ref(null); // The host we want to configure
-// Edited state for task parameters
-
-const userEditedTaskValues = ref({});
 
 const showSystemParamsDialog = ref(false);
 const userSettings = ref({}); // Tracks user-entered settings for each host
@@ -764,33 +550,14 @@ const selectedSystemParams = ref({});
 const selectedSystemHost = ref(null); // The host we want to configure
 const userEditedValues = ref({});
 
-// Refs for modal scroll indicators
-const taskModalBodyEl = ref(null);
-const systemModalBodyEl = ref(null);
-const showTaskScrollIndicator = ref(false);
-const showSystemScrollIndicator = ref(false);
-
 // Track edited state for each parameter
-const editedTaskParams = ref({});
 const editedParams = ref({});
-
-// Mark a task parameter as edited
-const markTaskAsEdited = (name, newValue) => {
-  editedTaskParams.value[name] = true;
-  userEditedTaskValues.value[name] = newValue;
-};
 
 // Mark a parameter as edited
 const markAsEdited = (name, newValue) => {
   editedParams.value[name] = true;
   userEditedValues.value[name] = newValue;
-};
-
-// Get the display value for a task parameter
-const getTaskDisplayValue = (name) => {
-  const liveValue = paramsForTask.value.selectedParams[name];
-  const editedValue = userEditedTaskValues.value[name];
-  return editedTaskParams.value[name] ? editedValue : liveValue;
+  console.log(`markAsEdited: ${name} = ${newValue}`);
 };
 
 // Get the display value for an input box
@@ -798,63 +565,6 @@ const getDisplayValue = (name) => {
   const liveValue = paramsForHost.value[selectedSystemHost.value]?.values[name];
   const editedValue = userEditedValues.value[name];
   return editedParams.value[name] ? editedValue : liveValue || "";
-};
-
-// Get dynamic class for a task parameter
-const getTaskInputClass = (name) => {
-  return editedTaskParams.value[name] ? "edited-param" : "live-param";
-};
-
-// Helper function to find a label for a given value among options
-const getLabelForValue = (currentValue, optionsArray) => {
-  if (!optionsArray || !Array.isArray(optionsArray)) {
-    return currentValue; // Return value itself if no valid options array
-  }
-
-  const normalizeParamString = (str) => {
-    if (typeof str !== "string") return str;
-    // Remove space after '{' and before '}'
-    return str.replace(/{\s+/g, "{").replace(/\s+}/g, "}").trim();
-  };
-
-  const normalizedCurrentValue = normalizeParamString(currentValue);
-
-  // Try a match with normalized values
-  let foundOption = optionsArray.find(
-    (opt) => normalizeParamString(opt.value) === normalizedCurrentValue
-  );
-  if (foundOption) {
-    return foundOption.label;
-  }
-
-  // If no full normalized match, try the tolerant brace-trimmed approach with normalized strings
-  if (
-    typeof normalizedCurrentValue === "string" &&
-    normalizedCurrentValue.startsWith("{") &&
-    normalizedCurrentValue.endsWith("}")
-  ) {
-    const currentValueCore = normalizedCurrentValue.slice(0, -1).trim(); // Remove last '}'
-
-    foundOption = optionsArray.find((opt) => {
-      const normalizedOptValue = normalizeParamString(opt.value);
-      // Check if normalizedOptValue (which might be missing its '}') equals currentValueCore
-      const isMatch = normalizedOptValue === currentValueCore;
-      return isMatch;
-    });
-
-    if (foundOption) {
-      return foundOption.label;
-    }
-  }
-
-  return currentValue;
-};
-
-// Reset edited values for task parameters
-const closeTaskParamsDialog = () => {
-  editedTaskParams.value = {};
-  userEditedTaskValues.value = {};
-  showParamsDialog.value = false;
 };
 
 // Dynamic input class
@@ -868,61 +578,11 @@ watch(selectedSystemHost, () => {
   userEditedValues.value = {};
 });
 
-const handleTaskScroll = () => {
-  showTaskScrollIndicator.value = false;
-};
-
-const onTaskModalShow = () => {
-  setTimeout(() => {
-    // If the ref is an array (due to v-for), find the one attached to the DOM
-    const el = Array.isArray(taskModalBodyEl.value)
-      ? taskModalBodyEl.value.find((e) => e.isConnected)
-      : taskModalBodyEl.value;
-
-    if (!el) return;
-
-    if (el.scrollHeight > el.clientHeight) {
-      showTaskScrollIndicator.value = true;
-      el.addEventListener("scroll", handleTaskScroll, { once: true });
-    }
-  }, 100);
-};
-
-const onTaskModalHide = () => {
-  // Simply reset the state; no need to touch the DOM element
-  showTaskScrollIndicator.value = false;
-};
-
-const handleSystemScroll = () => {
-  showSystemScrollIndicator.value = false;
-};
-
-const onSystemModalShow = () => {
-  setTimeout(() => {
-    // If the ref is an array (due to v-for), find the one attached to the DOM
-    const el = Array.isArray(systemModalBodyEl.value)
-      ? systemModalBodyEl.value.find((e) => e.isConnected)
-      : systemModalBodyEl.value;
-
-    if (!el) return;
-
-    if (el.scrollHeight > el.clientHeight) {
-      showSystemScrollIndicator.value = true;
-      el.addEventListener("scroll", handleSystemScroll, { once: true });
-    }
-  }, 100);
-};
-
-const onSystemModalHide = () => {
-  // Simply reset the state; no need to touch the DOM element
-  showSystemScrollIndicator.value = false;
-};
-
 const newDeviceName = ref("");
 const newDeviceIP = ref("");
 const newsubjectName = ref("");
 const currentTime = ref(Date.now());
-const server_ip = "10.2.145.85";
+const server_ip = "10.2.145.230";
 const ws_port = "8080";
 const sql_table_response = ref([]);
 const listboxOptions = ref({
@@ -930,14 +590,14 @@ const listboxOptions = ref({
   system: [],
   protocol: [],
   variant: [],
-  branch: [],
 });
 
 const fields = [
   { label: "Side", value: "side" },
+  { label: "Variant", value: "variant" },
+  { label: "Date", value: "date" },
   { label: "Status", value: "status" },
-  { label: "nhit", value: "nhit" },
-  { label: "nplanks", value: "nplanks" },
+  { label: "Subject", value: "subject" },
 ];
 
 function openParamsDialog(hostAddress) {
@@ -980,37 +640,88 @@ function closeSystemParamsDialog() {
   showSystemParamsDialog.value = false;
 }
 
-const imageSourcesByHost = computed(() => {
-  const sources = {};
-  if (!statusData.value || statusData.value.length === 0) {
-    return sources;
-  }
+// function parseVariantInfoForHost(hostAddress) {
+//   // Find the relevant row in `statusData`
+//   const row = statusData.value.find(
+//     (item) => item.host === hostAddress && item.status_type === "variant_info"
+//   );
+//   if (!row || !row.status_value) {
+//     console.error("No variant info row found for host:", hostAddress);
+//     paramNames.value = [];
+//     paramOptions.value = {};
+//     selectedParams.value = {};
+//     return;
+//   }
 
-  statusData.value.forEach((e) => {
-    if (!e.host || !e.status_type || !e.status_value) {
-      return;
-    }
+//   const fullStr = row.status_value;
 
-    if (!sources[e.host]) {
-      sources[e.host] = {
-        screenshotSrc: null,
-        photoCartoonSrc: null,
-      };
-    }
+//   // Parse loader_arg_names
+//   const namesMatch = fullStr.match(/loader_arg_names\s*\{([^}]+)\}/);
+//   if (namesMatch) {
+//     paramNames.value = namesMatch[1].trim().split(/\s+/); // e.g., ["nr", "nd", "targ_r", ...]
+//   } else {
+//     console.error("Failed to parse loader_arg_names for host:", hostAddress);
+//     paramNames.value = [];
+//   }
 
-    const b64 = e.status_value.trim();
-    const dataUri = b64.startsWith("data:")
-      ? b64
-      : `data:image/png;base64,${b64}`;
+//   // Parse loader_arg_options
+//   const optionsBlock = extractBlock(fullStr, "loader_arg_options {");
+//   if (optionsBlock) {
+//     paramOptions.value = parseLoaderArgOptions(optionsBlock); // Object: { nr: [...], nd: [...], ... }
+//   } else {
+//     console.error("Failed to parse loader_arg_options for host:", hostAddress);
+//     paramOptions.value = {};
+//   }
 
-    if (e.status_type === "screenshot") {
-      sources[e.host].screenshotSrc = dataUri;
-    } else if (e.status_type === "photo_cartoon") {
-      sources[e.host].photoCartoonSrc = dataUri;
-    }
-  });
-  return sources;
-});
+//   // Parse loader_args
+//   const argsBlock = extractBlock(fullStr, "loader_args {");
+//   if (argsBlock) {
+//     const tokens = splitByTopLevelSpaces(argsBlock); // e.g., ["200", "0", "1.5", ...]
+//     selectedParams.value = {};
+//     paramNames.value.forEach((name, i) => {
+//       selectedParams.value[name] = tokens[i] || ""; // Map params to their selected value
+//     });
+//   } else {
+//     console.error("Failed to parse loader_args for host:", hostAddress);
+//     selectedParams.value = {};
+//   }
+// }
+
+// function parseParamsForHost(hostAddress) {
+//   // Find the relevant row in `statusData`
+//   const row = statusData.value.find(
+//     (item) => item.host === hostAddress && item.status_type === "params"
+//   );
+//   if (!row || !row.status_value) {
+//     console.error("No variant info row found for host:", hostAddress);
+//     systemParamNames.value = [];
+//     selectedSystemParams.value = {};
+//     return;
+//   }
+
+//   const fullStr = row.status_value;
+
+//   // Parse the key-value pairs from the string
+//   const params = fullStr.split(" ");
+//   systemParamNames.value = [];
+//   selectedSystemParams.value = {};
+
+//   for (let i = 0; i < params.length; i += 2) {
+//     const key = params[i];
+//     const value = params[i + 1];
+
+//     // Add the key to the list of parameter names
+//     systemParamNames.value.push(key);
+
+//     // Add the key-value pair to the selected parameters
+//     selectedSystemParams.value[key] = value;
+//   }
+
+//   console.log("Parsed system parameters:", {
+//     systemParamNames: systemParamNames.value,
+//     selectedSystemParams: selectedSystemParams.value,
+//   });
+// }
 
 const paramsForTask = computed(() => {
   if (!selectedHost.value) return null;
@@ -1036,34 +747,14 @@ const paramsForTask = computed(() => {
 
   // Parse loader_arg_options
   const optionsBlock = extractBlock(fullStr, "loader_arg_options {");
-  console.log(
-    `Processing param: ${paramNames[0]}, optionsBlock: '${optionsBlock}'`
-  );
-
   const paramOptions = optionsBlock ? parseLoaderArgOptions(optionsBlock) : {};
 
   // Parse loader_args
   const argsBlock = extractBlock(fullStr, "loader_args {");
   const tokens = argsBlock ? splitByTopLevelSpaces(argsBlock) : [];
   const selectedParams = {};
-  // paramNames.forEach((name, i) => {
-  //   selectedParams[name] = tokens[i] || "";
-  // });
-
   paramNames.forEach((name, i) => {
-    let value = tokens[i] || "";
-
-    // Remove space after '{' at the beginning
-    if (value.startsWith("{ ")) {
-      value = "{" + value.slice(2);
-    }
-
-    // Remove space before '}' at the end
-    if (value.endsWith(" }")) {
-      value = value.slice(0, -2) + "}";
-    }
-
-    selectedParams[name] = value;
+    selectedParams[name] = tokens[i] || "";
   });
 
   return { paramNames, paramOptions, selectedParams };
@@ -1133,92 +824,50 @@ function extractBlock(str, marker) {
 function parseLoaderArgOptions(raw) {
   const result = {};
 
-  // Match each parameter name and its entire options block
-  const paramRegex = /(\w+)\s\{\{(.*?)\}\}(?=\s+\w+\s\{\{|$)/gs;
-  let paramMatch;
+  // Match each top-level parameter and its options block
+  const re = /(\w+)\s\{\{([\s\S]*?)\}\}/g;
+  let match;
 
-  while ((paramMatch = paramRegex.exec(raw)) !== null) {
-    const paramName = paramMatch[1];
-    const optionsBlock = paramMatch[2];
+  while ((match = re.exec(raw)) !== null) {
+    const paramName = match[1];
+    const optionsBlock = `{${match[2]}}`;
 
-    let extractedPairs = [];
+    let extractedPairs;
 
-    // ---- BEGIN NEW PARSING LOGIC ----
-    let processedOptionsBlock = optionsBlock.trim();
+    // Check if the optionsBlock contains nested curly braces
+    if (optionsBlock.match(/{[^{}]*{[^{}]*}[^{}]*}/)) {
+      // Special handling for nested curly braces
+      const outerPairRegex = /\{([^{}]*(\{[^{}]*\})*[^{}]*)\}/g;
+      extractedPairs = [];
+      let outerMatch;
 
-    // Heuristic: Attempt to fix a potentially missing closing brace on the very last pair
-    const lastOpenBrace = processedOptionsBlock.lastIndexOf("{");
-    if (lastOpenBrace > -1) {
-      // Check if this lastOpenBrace is indeed not closed by the end of the string
-      // and that it's not an empty {} block which might be valid for some other param type
-      const segmentAfterLastOpenBrace = processedOptionsBlock.substring(
-        lastOpenBrace + 1
-      );
-      if (
-        processedOptionsBlock.indexOf("}", lastOpenBrace) === -1 &&
-        segmentAfterLastOpenBrace.trim() !== ""
-      ) {
-        // Ensure the segment is not empty and seems to contain content before adding a brace
-        if (
-          segmentAfterLastOpenBrace
-            .trim()
-            .split(/\s+/)
-            .filter((s) => s.length > 0).length >= 1
-        ) {
-          processedOptionsBlock += "}";
+      while ((outerMatch = outerPairRegex.exec(optionsBlock)) !== null) {
+        const block = outerMatch[0].trim();
+
+        // Extract label and nested value
+        const matches = block.match(/{\s*(\w+)\s*({[^}]*}|\s+[^}]*)\s*}/);
+        if (matches) {
+          const label = matches[1];
+          // If the value starts with '{', keep it as is, otherwise wrap it
+          let value = matches[2].trim();
+          if (!value.startsWith("{")) {
+            value = `{ ${value} }`;
+          }
+          extractedPairs.push({ label, value });
         }
       }
+    } else {
+      // Original handling for simple blocks
+      const subMatches = optionsBlock.match(/\{([^{}]*)\}/g) || [];
+      extractedPairs = subMatches.map((m) => {
+        const inner = m.slice(1, -1).trim();
+        const tokens = inner.split(/\s+/);
+        return {
+          label: tokens[0],
+          value: tokens.slice(1).join(" ").trim() || tokens[0],
+        };
+      });
     }
-
-    if (processedOptionsBlock) {
-      // Replace '}\s*{' with a unique delimiter, then split by it.
-      // This handles cases like 'opt1} {opt2} {opt3}' correctly.
-      const segments = processedOptionsBlock
-        .replace(/}\s*{/g, "}|--DELIMITER--|{")
-        .split("|--DELIMITER--|");
-
-      extractedPairs = segments
-        .map((segment) => {
-          let cleanSegment = segment.trim();
-
-          // Remove surrounding {} if present (e.g., '{opt2}' or first/last items if they have them)
-          if (cleanSegment.startsWith("{") && cleanSegment.endsWith("}")) {
-            cleanSegment = cleanSegment.slice(1, -1).trim();
-          } else if (cleanSegment.endsWith("}")) {
-            // Handles the first segment if it was like 'opt1}'
-            cleanSegment = cleanSegment.slice(0, -1).trim();
-          } else if (cleanSegment.startsWith("{")) {
-            // Handles the last segment if it was like '{optN' (after heuristic fix or other malformation)
-            cleanSegment = cleanSegment.slice(1).trim();
-          }
-          // If after all this, segment is empty, or became empty, skip.
-          if (!cleanSegment) return null;
-
-          const tokens = cleanSegment.split(/\s+/).filter((s) => s.length > 0);
-          if (tokens.length === 0) return null;
-
-          const label = tokens[0];
-          let value = tokens.slice(1).join(" ").trim() || label; // Use label as value if no other tokens
-
-          // Specific fix for values that are themselves braced structures
-          if (
-            value.startsWith("{") &&
-            !value.endsWith("}") &&
-            value.includes(" ")
-          ) {
-            // Check brace balance before appending.
-            let openBraces = (value.match(/{/g) || []).length;
-            let closeBraces = (value.match(/}/g) || []).length;
-            if (openBraces > closeBraces) {
-              value += "}";
-            }
-          }
-
-          return { label, value };
-        })
-        .filter((pair) => pair && pair.label); // Filter out nulls or pairs without a label
-    }
-    // ---- END NEW PARSING LOGIC ----
 
     result[paramName] = extractedPairs;
   }
@@ -1259,27 +908,14 @@ function saveTaskParams() {
     return;
   }
 
-  // Use userEditedTaskValues to package only user-edited values
-  const userEdited = userEditedTaskValues.value;
-  if (Object.keys(userEdited).length === 0) {
-    console.error("No user-edited parameters to save.");
-    return;
-  }
-
-  // Build the command using the edited parameters
-  const paramsCommand = buildParamsCommand(userEdited);
+  // Build the command using the currently selected params
+  const paramsCommand = buildParamsCommand(paramsForTask.value.selectedParams);
 
   // Close the dialog
   showParamsDialog.value = false;
 
   // Send the updated parameters to the server
   sendMessage("esscmd", selectedHost.value, paramsCommand);
-
-  // Reset edited state
-  editedTaskParams.value = {};
-  userEditedTaskValues.value = {};
-
-  console.log(`Command sent to ${selectedHost.value}:`, paramsCommand);
 }
 
 function saveSystemTaskParams(deviceAddress) {
@@ -1311,6 +947,29 @@ function saveSystemTaskParams(deviceAddress) {
   showSystemParamsDialog.value = false;
 
   console.log(`Command sent to ${deviceAddress}:`, command);
+
+  // const userEntered = userSettings.value[deviceAddress] || {};
+
+  // if (Object.keys(userEntered).length === 0) {
+  //   console.error("No user settings to save.");
+  //   return;
+  // }
+
+  // let command = "::ess::set_params ";
+
+  // // Build the command from user-entered settings
+  // for (const [paramName, paramVal] of Object.entries(userEntered)) {
+  //   command += `${paramName} ${paramVal} `;
+  // }
+
+  // // Send the command to the server
+  // sendMessage("esscmd", deviceAddress, command);
+
+  // // Clear user settings for the host
+  // delete userSettings.value[deviceAddress];
+
+  // // Close the dialog
+  // showSystemParamsDialog.value = false;
 }
 
 function buildParamsCommand(params) {
@@ -1323,8 +982,7 @@ function buildParamsCommand(params) {
   }
 
   // Remove trailing space and add closing brace
-  const finalCommand = command.trim() + "}; ::ess::reload_variant";
-  return finalCommand;
+  return command.trim() + "}";
 }
 
 // Transform perfStatsFull data to include only rows with sys/protocol/variant as '*'
@@ -1412,7 +1070,6 @@ function initializeDropdown(host) {
       systemOptions: ["emcalib", "match_to_sample", "search"],
       protocolOptions: [],
       variantOptions: [],
-      branchOptions: [],
     };
   }
 }
@@ -1424,7 +1081,6 @@ function initializeSelection(host) {
       system: "",
       protocol: "",
       variant: "",
-      branch: "",
     };
   }
 }
@@ -1450,8 +1106,7 @@ onMounted(() => {
 
         initializeDropdown(host);
 
-        if (status_type && status_value !== undefined) {
-          // Ensure status_value exists
+        if (status_type && status_value) {
           // console.log("new status_value: ", host);
           switch (status_type) {
             case "animalOptions":
@@ -1465,9 +1120,6 @@ onMounted(() => {
               break;
             case "variants":
               dropdowns.value[host].variantOptions = status_value.split(" ");
-              break;
-            case "branches":
-              dropdowns.value[host].branchOptions = status_value.split(" ");
               break;
 
             case "subject":
@@ -1497,23 +1149,8 @@ onMounted(() => {
                 : [status_value];
               break;
 
-            case "branch":
-              initializeSelection(host);
-              userSelections.value[host].branch = Array.isArray(status_value)
-                ? status_value[0] // Assuming branch is single select
-                : status_value;
-              break;
-
             case "running":
               runningStatus.value[host] = status_value === "1";
-              break;
-            case "status": // Added to handle 'loading' status
-              if (status_value === "loading") {
-                loadingDeviceStatus.value[host] = true;
-              } else {
-                // Assuming any other status_value for 'status' type means loading is done or not applicable
-                loadingDeviceStatus.value[host] = false;
-              }
               break;
           }
         }
@@ -1556,18 +1193,6 @@ function handleUserSelection(val, host, type) {
       const protocolForVariant = userSelections.value[host].protocol;
       msg = `::ess::load_system ${systemForVariant} ${protocolForVariant} ${val}`;
       break;
-    case "branch":
-      // Construct the command with the selected branch
-      console.log(`Branch selected: ${val} for host: ${host}`);
-
-      const system = userSelections.value[host]?.system || "";
-      const protocol = userSelections.value[host]?.protocol || "";
-      const variant = userSelections.value[host]?.variant || "";
-
-      const command = `send git ::git::switch_and_pull ${val}; ::ess::stop; ::ess::load_system ${system} ${protocol} ${variant}`;
-      sendMessage("esscmd", host, command);
-      // msg is not set here, direct send
-      break;
     default:
       console.warn(`Unknown selection type: ${type}`);
   }
@@ -1586,9 +1211,6 @@ function getsubject(host) {
 }
 
 function getRunningStatus(host) {
-  // if (host == "192.168.4.201") {
-  //   console.log("host: ", host, " runningStatus: ", runningStatus.value[host]);
-  // }
   return runningStatus.value[host] || false;
 }
 
@@ -1643,11 +1265,6 @@ function resetTask(host) {
   const variant = userSelections.value[host].variant;
   const msg = `::ess::load_system ${systemForVariant} ${protocolForVariant} ${variant}`;
   sendMessage("esscmd", host, "::ess::stop");
-  sendMessage("esscmd", host, msg);
-}
-
-function juice_reward(host) {
-  const msg = `::ess::reward 1`;
   sendMessage("esscmd", host, msg);
 }
 
@@ -1862,23 +1479,12 @@ function getBatteryIcon(host) {
       else if (batteryPercent > 76) return "sym_o_battery_charging_90";
       else if (batteryPercent > 64) return "sym_o_battery_charging_80";
       else if (batteryPercent > 52) return "sym_o_battery_charging_50";
-      else if (batteryPercent > 40) return "sym_o_battery_charging_30";
-      else return "sym_o_battery_charging_20";
+      else if (batteryPercent > 40) return "sym_o_battery_charging_20";
+      else return "battery_charging_alert";
     }
   }
 
   return "battery_unknown"; // Default if no data available
-}
-
-const getSlotDisplayValue = (opt) => {
-  if (Array.isArray(opt) && opt.length > 0) {
-    return opt[0];
-  }
-  return opt === null || typeof opt === "undefined" ? "" : opt;
-};
-
-function getLoadingDeviceStatus(host) {
-  return !!loadingDeviceStatus.value[host];
 }
 </script>
 
@@ -1969,115 +1575,5 @@ function getLoadingDeviceStatus(host) {
 .edited-param {
   background-color: #ffeeba; /* Light yellow for user-edited inputs */
   color: #856404; /* Darker text for contrast */
-}
-
-.live-param {
-  background-color: rgb(255, 255, 255); /* Default live-updating color */
-}
-
-.edited-param {
-  background-color: rgb(255, 251, 214); /* Edited color for user changes */
-}
-
-.hard-truncate {
-  display: block; /* Ensures it takes the full width of its container */
-  width: 100%;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: clip; /* Cuts off text without ellipsis */
-}
-
-.loading-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(255, 255, 255, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10; /* Ensure it's on top */
-}
-
-/* Modal Dialog Styles */
-.modal-card {
-  width: 350px;
-  max-width: 80vw;
-  display: flex;
-  flex-direction: column;
-  max-height: 80vh;
-  position: relative; /* Set as the positioning context for the chevron */
-}
-
-.modal-header {
-  position: sticky;
-  top: 0;
-  background: white;
-  z-index: 2;
-  padding-bottom: 8px;
-  text-align: center;
-}
-
-.modal-body {
-  flex: 1;
-  overflow-y: scroll;
-  padding: 16px;
-  scrollbar-width: thin;
-  scrollbar-color: #027be3 #e0e0e0;
-}
-
-.modal-body::-webkit-scrollbar {
-  width: 8px;
-}
-
-.modal-body::-webkit-scrollbar-thumb {
-  background-color: #027be3;
-  border-radius: 4px;
-}
-
-.modal-body::-webkit-scrollbar-track {
-  background-color: #e0e0e0;
-  border-radius: 4px;
-}
-
-.modal-footer {
-  position: sticky;
-  bottom: 0;
-  background: white;
-  z-index: 2;
-  padding-top: 0;
-}
-
-@keyframes bounce {
-  0%,
-  20%,
-  50%,
-  80%,
-  100% {
-    transform: translateY(0);
-  }
-  40% {
-    transform: translateY(-15px);
-  }
-  60% {
-    transform: translateY(-8px);
-  }
-}
-
-.scroll-indicator-wrapper {
-  position: absolute;
-  bottom: 55px;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: center;
-  pointer-events: none;
-}
-
-.scroll-indicator {
-  color: #bdbdbd;
-  animation: bounce 2s infinite;
-  z-index: 10; /* Ensure it's on top of the content */
 }
 </style>
