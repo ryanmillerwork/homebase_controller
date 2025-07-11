@@ -536,6 +536,13 @@
       </div>
     </div>
 
+    <QueryDialog
+      v-model="showQueryBuilderDialog"
+      v-model:sql-table-response="sql_table_response"
+      :listbox-options="listboxOptions"
+      :fields="fields"
+    />
+
     <q-dialog
       v-model="showParamsDialog"
       persistent
@@ -922,7 +929,8 @@ const newDeviceName = ref("");
 const newDeviceIP = ref("");
 const newsubjectName = ref("");
 const currentTime = ref(Date.now());
-const server_ip = "10.2.145.85";
+const server_ip = window.location.hostname; // use this if the server is running on the same machine as the client
+// const server_ip = "10.2.145.85"; // use this for testing
 const ws_port = "8080";
 const sql_table_response = ref([]);
 const listboxOptions = ref({

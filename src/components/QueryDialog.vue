@@ -21,7 +21,7 @@
                   push
                   :color="sortByDate ? 'primary' : 'white'"
                   :text-color="sortByDate ? 'white' : 'primary'"
-                  label="Sort by date"
+                  label="Group by date"
                   class="q-mt-sm full-width"
                   @click="
                     sortByDate = !sortByDate;
@@ -83,7 +83,7 @@
                     push
                     :color="sortBySubject ? 'primary' : 'white'"
                     :text-color="sortBySubject ? 'white' : 'primary'"
-                    label="Sort subject"
+                    label="Group by subject"
                     class="q-mt-sm full-width"
                     @click="
                       sortBySubject = !sortBySubject;
@@ -107,7 +107,7 @@
                     push
                     :color="sortByStatus ? 'primary' : 'white'"
                     :text-color="sortByStatus ? 'white' : 'primary'"
-                    label="Sort by Status"
+                    label="Group by Status"
                     class="q-mt-sm full-width"
                     @click="
                       sortByStatus = !sortByStatus;
@@ -220,7 +220,7 @@
                     push
                     :color="sortByVariant ? 'primary' : 'white'"
                     :text-color="sortByVariant ? 'white' : 'primary'"
-                    label="Sort by Variant"
+                    label="Group by Variant"
                     class="q-mt-sm full-width"
                     @click="
                       sortByVariant = !sortByVariant;
@@ -255,7 +255,7 @@
               unelevated
               :options="[
                 { label: 'Include', value: 'filter' },
-                { label: 'Sort by', value: 'group' },
+                { label: 'Group by', value: 'group' },
               ]"
               @update:model-value="onRowChange"
               class="query-toggle-button"
@@ -598,38 +598,51 @@ const chartSeries = computed(() => {
 
   // If we have no sorting columns, create a single series for % Correct
   if (sortingColumns.length === 0) {
-    return [
-      {
-        name: percentColumn.label,
-        data: localRows.value.map((row) => ({
-          x: new Date(row[dateColumn.field]).getTime(),
-          y: parseFloat(row[percentColumn.field]),
-        })),
-      },
-    ];
+    const data = localRows.value
+      .map((row) => {
+        const dateStr = row[dateColumn.name];
+        // FIX: Append time and timezone info to avoid UTC conversion issues
+        const date = new Date(dateStr + "T00:00:00");
+        const value = parseFloat(row[percentColumn.name]);
+        return { x: date, y: value };
+      })
+      .sort((a, b) => a.x - b.x); // Ensure data is sorted by date
+
+    return [{ name: percentColumn.label, data }];
   }
 
-  // Group rows by unique combinations of sorting column values
-  const groupedData = localRows.value.reduce((acc, row) => {
-    // Create a key from the combination of all sorting column values
-    const combinationKey = sortingColumns
-      .map((col) => `${col.label}: ${row[col.name]}`)
-      .join(" | ");
+  // If we have sorting columns, create a series for each unique combination
+  const seriesMap = new Map();
 
-    if (!acc[combinationKey]) {
-      acc[combinationKey] = [];
+  localRows.value.forEach((row) => {
+    // Create a unique key for the series
+    const seriesKey = sortingColumns
+      .map((col) => row[col.name])
+      .filter(Boolean) // Remove null/undefined values
+      .join(" - ");
+
+    // If the key is empty, skip this row
+    if (!seriesKey) return;
+
+    // Get or create the series array
+    if (!seriesMap.has(seriesKey)) {
+      seriesMap.set(seriesKey, []);
     }
-    acc[combinationKey].push(row);
-    return acc;
-  }, {});
+    const seriesData = seriesMap.get(seriesKey);
 
-  // Create a series for each unique combination
-  return Object.entries(groupedData).map(([combinationKey, rows]) => ({
-    name: combinationKey,
-    data: rows.map((row) => ({
-      x: new Date(row[dateColumn.field].split("T")[0]).getTime(),
-      y: parseFloat(row[percentColumn.field]),
-    })),
+    // Add the data point
+    const dateStr = row[dateColumn.name];
+    // FIX: Append time and timezone info to avoid UTC conversion issues
+    const date = new Date(dateStr + "T00:00:00");
+    const value = parseFloat(row[percentColumn.name]);
+
+    seriesData.push({ x: date, y: value });
+  });
+
+  // Convert map to array and sort each series by date
+  return Array.from(seriesMap.entries()).map(([name, data]) => ({
+    name,
+    data: data.sort((a, b) => a.x - b.x),
   }));
 });
 
