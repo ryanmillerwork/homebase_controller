@@ -827,6 +827,12 @@ const mappingsTable = [
     type: "int",
     defaultAlias: "nplanks",
   },
+  {
+    name: "nonmatch_transparency",
+    path: "(trialinfo->'stiminfo'->>'nonmatch_transparency')",
+    type: "float",
+    defaultAlias: "nonmatch_transparency",
+  },
 ];
 
 function removeAllFilters() {
