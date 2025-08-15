@@ -1845,16 +1845,26 @@ function getBatteryIcon(host) {
     const maxV = parseFloat(maxEntry.status_value);
     const batteryPercent = calculateBatteryPercent(maxV, currentV);
 
-    const current = Math.abs(
-      parseFloat(
-        statusData.value.find(
-          (entry) => entry.host === host && entry.status_type === "24v-a"
-        )?.status_value || "0"
-      )
+    const chargingEntry = statusData.value.find(
+      (entry) => entry.host === host && entry.status_type === "charging"
     );
 
+    let isCharging;
+    if (chargingEntry) {
+      isCharging = chargingEntry.status_value === "1";
+    } else {
+      const current = Math.abs(
+        parseFloat(
+          statusData.value.find(
+            (entry) => entry.host === host && entry.status_type === "24v-a"
+          )?.status_value || "0"
+        )
+      );
+      isCharging = current >= 0.1;
+    }
+
     // Choose icon based on charging state and battery percent
-    if (current < 0.1) {
+    if (!isCharging) {
       // When not charging
       if (batteryPercent > 88) return "battery_full";
       else if (batteryPercent > 76) return "battery_6_bar";
