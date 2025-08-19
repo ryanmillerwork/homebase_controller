@@ -461,7 +461,14 @@
                     label="Reward"
                     text-color="black"
                     icon-right="sym_o_water_drop"
-                    @click="juice_reward(device.address)"
+                    @mousedown="onRewardPressStart(device.address)"
+                    @mouseup="onRewardPressEnd(device.address)"
+                    @mouseleave="onRewardPressEnd(device.address)"
+                    @touchstart.prevent.stop="
+                      onRewardPressStart(device.address)
+                    "
+                    @touchend.prevent.stop="onRewardPressEnd(device.address)"
+                    @touchcancel.prevent.stop="onRewardPressEnd(device.address)"
                     class="full-width"
                     style="height: 60px"
                   ></q-btn>
@@ -469,6 +476,38 @@
               </div>
             </q-card-section>
           </q-card>
+
+          <q-dialog v-model="showJuicerDialog">
+            <q-card style="min-width: 320px">
+              <q-card-section class="text-h6">Juicer</q-card-section>
+              <q-card-section class="q-gutter-md">
+                <div class="row q-gutter-sm">
+                  <q-btn
+                    color="primary"
+                    label="Run calibration (~ 8 min)"
+                    class="col"
+                    @click="run_juicer_calibration(juicerDialogHost)"
+                  />
+                </div>
+                <div class="row items-center q-gutter-sm">
+                  <q-input
+                    class="col"
+                    outlined
+                    dense
+                    v-model="observedVolume"
+                    label="Observed volume (ml)"
+                    type="number"
+                    @keyup.enter="handleUpdateJuicerFlow"
+                  />
+                  <q-btn
+                    color="primary"
+                    label="Update"
+                    @click="handleUpdateJuicerFlow"
+                  />
+                </div>
+              </q-card-section>
+            </q-card>
+          </q-dialog>
 
           <q-card
             flat
@@ -1638,6 +1677,31 @@ function juice_reward(host) {
   sendMessage("esscmd", host, msg);
 }
 
+// Shared juicer calibration configuration
+const juicerCalibration = ref({
+  iterations: 500, // number of dispenses
+  onMs: 500, // ms on per dispense
+  offMs: 500, // ms off between dispenses
+});
+
+function run_juicer_calibration(host) {
+  // calibrate takes iters on off
+  const { iterations, onMs, offMs } = juicerCalibration.value;
+  const msg = `[set ::ess::current(juicer)] calibrate ${iterations} ${onMs} ${offMs}`;
+  sendMessage("esscmd", host, msg);
+}
+
+function update_juicer_flow_rate(host, observed_volume) {
+  // Time in seconds that the juicer actively dispenses during calibration
+  const { iterations, onMs } = juicerCalibration.value;
+  const assumedRuntimeSec = (onMs / 1000) * iterations;
+  // Flow rate in ml/s, rounded to 2 decimal places
+  const flowRate =
+    Math.round((observed_volume / assumedRuntimeSec) * 100) / 100;
+  const msg = `[set ::ess::current(juicer)] set flow_rate ${flowRate}`;
+  sendMessage("esscmd", host, msg);
+}
+
 let timer;
 
 onMounted(() => {
@@ -1917,6 +1981,48 @@ function onLoadingTooltipShow(host) {
 
 function onLoadingTooltipHide(host) {
   console.log(`[LoadingTooltip] Hide for ${host}`);
+}
+
+const showJuicerDialog = ref(false);
+const juicerDialogHost = ref(null);
+const observedVolume = ref(0);
+const rewardHoldTimerId = ref(null);
+const rewardHoldTriggered = ref(false);
+const rewardPressActive = ref(false);
+
+function onRewardPressStart(host) {
+  juicerDialogHost.value = host;
+  observedVolume.value = 0;
+  rewardHoldTriggered.value = false;
+  rewardPressActive.value = true;
+  // Start 1s timer to trigger dialog
+  rewardHoldTimerId.value = setTimeout(() => {
+    rewardHoldTriggered.value = true;
+    showJuicerDialog.value = true;
+  }, 1000);
+}
+
+function onRewardPressEnd(host) {
+  const wasActive = rewardPressActive.value;
+  rewardPressActive.value = false;
+  if (!wasActive) return; // Ignore stray mouseleave without a press
+
+  if (rewardHoldTimerId.value) {
+    clearTimeout(rewardHoldTimerId.value);
+    rewardHoldTimerId.value = null;
+  }
+  // If hold did not trigger, treat as a tap → reward
+  if (!rewardHoldTriggered.value) {
+    juice_reward(host);
+  }
+}
+
+function handleUpdateJuicerFlow() {
+  const vol = parseFloat(observedVolume.value);
+  if (juicerDialogHost.value && !Number.isNaN(vol) && vol > 0) {
+    update_juicer_flow_rate(juicerDialogHost.value, vol);
+  }
+  showJuicerDialog.value = false;
 }
 </script>
 
