@@ -362,7 +362,10 @@
                     style="width: 48%; height: 55px"
                     label="Task parameters"
                     @click="openParamsDialog(device.address)"
-                    :disable="getLoadingDeviceStatus(device.address)"
+                    :disable="
+                      getRunningStatus(device.address) ||
+                      getLoadingDeviceStatus(device.address)
+                    "
                   ></q-btn>
 
                   <!-- Button to open system parameter picker -->
@@ -373,7 +376,10 @@
                     style="width: 48%; height: 55px"
                     label="System parameters"
                     @click="openSystemParamsDialog(device.address)"
-                    :disable="getLoadingDeviceStatus(device.address)"
+                    :disable="
+                      getRunningStatus(device.address) ||
+                      getLoadingDeviceStatus(device.address)
+                    "
                   ></q-btn>
                 </div>
               </div>
@@ -394,11 +400,18 @@
                     <template v-slot:running>
                       <div
                         class="toggle-content full-width full-height q-pa-none cursor-pointer"
-                        @click="toggleTask(true, device.address)"
+                        @click="
+                          canStart(device.address) &&
+                            toggleTask(true, device.address)
+                        "
                         :style="{
                           color: getRunningStatus(device.address)
                             ? 'green'
                             : 'black',
+                          cursor: canStart(device.address)
+                            ? 'pointer'
+                            : 'not-allowed',
+                          opacity: canStart(device.address) ? 1 : 0.5,
                         }"
                       >
                         <div class="text-center">Running</div>
@@ -1518,18 +1531,18 @@ function handleUserSelection(val, host, type) {
       break;
     case "system":
       // Only system is specified
-      msg = `::ess::load_system ${val}`;
+      msg = `evalNoReply {::ess::load_system ${val}}`;
       break;
     case "protocol":
       // System and protocol specified, using the new protocol value
       const systemForProtocol = userSelections.value[host].system;
-      msg = `::ess::load_system ${systemForProtocol} ${val}`;
+      msg = `evalNoReply {::ess::load_system ${systemForProtocol} ${val}}`;
       break;
     case "variant":
       // System, protocol, and variant specified, using the new variant value
       const systemForVariant = userSelections.value[host].system;
       const protocolForVariant = userSelections.value[host].protocol;
-      msg = `::ess::load_system ${systemForVariant} ${protocolForVariant} ${val}`;
+      msg = `evalNoReply {::ess::load_system ${systemForVariant} ${protocolForVariant} ${val}}`;
       break;
     case "branch":
       // Construct the command with the selected branch
@@ -1539,7 +1552,7 @@ function handleUserSelection(val, host, type) {
       const protocol = userSelections.value[host]?.protocol || "";
       const variant = userSelections.value[host]?.variant || "";
 
-      const command = `send git ::git::switch_and_pull ${val}; ::ess::stop; ::ess::load_system ${system} ${protocol} ${variant}`;
+      const command = `send git ::git::switch_and_pull ${val}; ::ess::stop; evalNoReply {::ess::load_system ${system} ${protocol} ${variant}}`;
       sendMessage("esscmd", host, command);
       // msg is not set here, direct send
       break;
@@ -1616,9 +1629,8 @@ function resetTask(host) {
   const systemForVariant = userSelections.value[host].system;
   const protocolForVariant = userSelections.value[host].protocol;
   const variant = userSelections.value[host].variant;
-  const msg = `evalNoReply::ess::load_system ${systemForVariant} ${protocolForVariant} ${variant}`;
-  sendMessage("esscmd", host, "::ess::stop");
-  sendMessage("esscmd", host, msg);
+  const cmd = `::ess::stop; evalNoReply {::ess::load_system ${systemForVariant} ${protocolForVariant} ${variant}}`;
+  sendMessage("esscmd", host, cmd);
 }
 
 function juice_reward(host) {
@@ -1880,11 +1892,19 @@ const getSlotDisplayValue = (opt) => {
 };
 
 function getLoadingDeviceStatus(host) {
-  const progress = loadingProgress.value[host];
-  const visible =
-    (progress && progress.stage !== "complete") ||
-    !!loadingDeviceStatus.value[host];
-  return visible;
+  const stage = loadingProgress.value[host]?.stage;
+  if (stage) {
+    // Hide loading UI on terminal stages
+    return !(stage === "complete" || stage === "error");
+  }
+  return !!loadingDeviceStatus.value[host];
+}
+
+function canStart(host) {
+  const lp = loadingProgress.value[host];
+  if (!lp) return true;
+  // Only allow start when an explicit loading_progress exists and is fully complete
+  return Number(lp.percent) === 100;
 }
 
 function onLoadingTooltipBeforeShow(host) {

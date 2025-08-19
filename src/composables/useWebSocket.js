@@ -146,7 +146,15 @@ export default function useWebSocket(
         try {
           const progressData = JSON.parse(status_value);
           loadingProgress.value[host] = progressData;
-          loadingDeviceStatus.value[host] = progressData?.stage !== "complete";
+          if (
+            progressData?.stage === "complete" ||
+            progressData?.stage === "error"
+          ) {
+            // End of operation (success or failure) → unlock this host
+            loadingDeviceStatus.value[host] = false;
+          } else {
+            loadingDeviceStatus.value[host] = true;
+          }
         } catch (e) {
           console.error("Failed to parse loading_progress JSON:", e);
         }
