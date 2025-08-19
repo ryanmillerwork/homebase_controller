@@ -162,7 +162,42 @@
                   v-if="getLoadingDeviceStatus(device.address)"
                   class="loading-overlay items-center justify-center"
                 >
-                  <q-spinner-hourglass size="3em" color="primary" />
+                  <q-circular-progress
+                    :value="loadingProgress[device.address]?.percent || 0"
+                    size="50px"
+                    color="blue"
+                    class="q-ma-md"
+                  >
+                    <div
+                      @mouseenter="
+                        hoveredLoadingHost = device.address;
+                        console.log('[hover-enter]', device.address);
+                      "
+                      @mouseleave="
+                        hoveredLoadingHost = null;
+                        console.log('[hover-leave]', device.address);
+                      "
+                    >
+                      <q-tooltip
+                        @before-show="
+                          onLoadingTooltipBeforeShow(device.address)
+                        "
+                        @show="onLoadingTooltipShow(device.address)"
+                        @hide="onLoadingTooltipHide(device.address)"
+                        anchor="top middle"
+                        self="bottom middle"
+                        :offset="[0, 8]"
+                        :delay="150"
+                        :hide-delay="100"
+                        :content-style="{ zIndex: 10000 }"
+                      >
+                        {{
+                          loadingProgress[device.address]?.message ||
+                          "Loading..."
+                        }}
+                      </q-tooltip>
+                    </div>
+                  </q-circular-progress>
                 </div>
 
                 <div class="row align-items-center">
@@ -752,6 +787,8 @@ const dropdowns = ref({});
 const userSelections = ref({});
 const runningStatus = ref({});
 const loadingDeviceStatus = ref({}); // Added for loading state
+const loadingProgress = ref({});
+const hoveredLoadingHost = ref(null);
 const showAddOptionsDialog = ref(false);
 const showQueryBuilderDialog = ref(false);
 
@@ -1334,7 +1371,7 @@ function buildParamsCommand(params) {
   }
 
   // Remove trailing space and add closing brace
-  const finalCommand = command.trim() + "}; ::ess::reload_variant";
+  const finalCommand = command.trim() + "}; evalNoReply ::ess::reload_variant";
   return finalCommand;
 }
 
@@ -1526,6 +1563,23 @@ onMounted(() => {
                 loadingDeviceStatus.value[host] = false;
               }
               break;
+            case "loading_progress":
+              try {
+                const progressData = JSON.parse(status_value);
+                if (host === hoveredLoadingHost.value) {
+                  console.log("[loading_progress]", host, progressData);
+                }
+                loadingProgress.value[host] = progressData;
+                if (progressData.stage === "complete") {
+                  // Also update the old loading status to ensure everything is in sync
+                  loadingDeviceStatus.value[host] = false;
+                } else {
+                  loadingDeviceStatus.value[host] = true;
+                }
+              } catch (e) {
+                console.error("Failed to parse loading_progress JSON:", e);
+              }
+              break;
           }
         }
       });
@@ -1652,7 +1706,7 @@ function resetTask(host) {
   const systemForVariant = userSelections.value[host].system;
   const protocolForVariant = userSelections.value[host].protocol;
   const variant = userSelections.value[host].variant;
-  const msg = `::ess::load_system ${systemForVariant} ${protocolForVariant} ${variant}`;
+  const msg = `evalNoReply::ess::load_system ${systemForVariant} ${protocolForVariant} ${variant}`;
   sendMessage("esscmd", host, "::ess::stop");
   sendMessage("esscmd", host, msg);
 }
@@ -1675,16 +1729,33 @@ onUnmounted(() => {
 });
 
 function getTimeSinceLastEvent(device) {
-  const entry = statusData.value.find((item) => {
-    return item.host === device && item.status_type === "last_completed";
-  });
+  // Prefer explicit epoch milliseconds from last_trial_time_ms
+  const msEntry = statusData.value.find(
+    (item) => item.host === device && item.status_type === "last_trial_time_ms"
+  );
 
-  if (!entry) {
-    return 0; // Default to 0 if no entry is found
+  if (msEntry && msEntry.status_value != null) {
+    const ms =
+      typeof msEntry.status_value === "number"
+        ? msEntry.status_value
+        : parseInt(msEntry.status_value, 10);
+    if (!isNaN(ms)) {
+      return Math.max(0, currentTime.value - ms);
+    }
   }
 
-  const lastEventTimeUTC = new Date(entry.status_value).getTime();
-  return currentTime.value - lastEventTimeUTC; // Difference in milliseconds
+  // Fallback to legacy last_completed (Date-parseable string)
+  const legacyEntry = statusData.value.find(
+    (item) => item.host === device && item.status_type === "last_completed"
+  );
+  if (legacyEntry && legacyEntry.status_value) {
+    const t = new Date(legacyEntry.status_value).getTime();
+    if (!isNaN(t)) {
+      return Math.max(0, currentTime.value - t);
+    }
+  }
+
+  return 0; // Default if no valid timestamp is found
 }
 
 function getSecondsValue(device) {
@@ -1854,7 +1925,7 @@ function getBatteryIcon(host) {
 
     let isCharging;
     if (chargingEntry) {
-      isCharging = chargingEntry.status_value === "1";
+      isCharging = chargingEntry.status_value === "true";
     } else {
       const current = Math.abs(
         parseFloat(
@@ -1899,7 +1970,23 @@ const getSlotDisplayValue = (opt) => {
 };
 
 function getLoadingDeviceStatus(host) {
-  return !!loadingDeviceStatus.value[host];
+  const progress = loadingProgress.value[host];
+  const visible =
+    (progress && progress.stage !== "complete") ||
+    !!loadingDeviceStatus.value[host];
+  return visible;
+}
+
+function onLoadingTooltipBeforeShow(host) {
+  console.log(`[LoadingTooltip] Before show for ${host}`);
+}
+
+function onLoadingTooltipShow(host) {
+  console.log(`[LoadingTooltip] Show for ${host}`);
+}
+
+function onLoadingTooltipHide(host) {
+  console.log(`[LoadingTooltip] Hide for ${host}`);
 }
 </script>
 

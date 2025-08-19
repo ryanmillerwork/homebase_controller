@@ -34,7 +34,7 @@ export default function useWebSocket(
     };
 
     socket.value.onmessage = (event) => {
-      // console.log("Received message:", event.data);
+      console.log("Received message:", event.data);
       try {
         const parsedData = JSON.parse(event.data);
         if (parsedData.type === "status" && Array.isArray(parsedData.data)) {
