@@ -17,8 +17,143 @@ export default function useWebSocket(
   ip,
   port,
   sql_table_response,
-  listboxOptions
+  listboxOptions,
+  // New reactive references to update per message
+  dropdowns,
+  userSelections,
+  runningStatus,
+  loadingDeviceStatus,
+  loadingProgress
 ) {
+  const upsertStatusEntry = (item) => {
+    const keyMatch = (e) =>
+      e.host === item.host && e.status_type === item.status_type;
+    const existingIndex = statusData.value.findIndex(keyMatch);
+    const incomingTs = Date.parse(item.sys_time || 0) || 0;
+
+    if (existingIndex !== -1) {
+      const existing = statusData.value[existingIndex];
+      const existingTs = Date.parse(existing.sys_time || 0) || 0;
+      if (incomingTs >= existingTs) {
+        statusData.value[existingIndex] = item;
+      }
+    } else {
+      statusData.value.push(item);
+    }
+  };
+
+  const ensureDropdownHost = (host) => {
+    if (!dropdowns.value[host]) {
+      dropdowns.value[host] = {
+        animalOptions: [],
+        systemOptions: ["emcalib", "match_to_sample", "search"],
+        protocolOptions: [],
+        variantOptions: [],
+        branchOptions: [],
+      };
+    }
+  };
+
+  const ensureSelectionHost = (host) => {
+    if (!userSelections.value[host]) {
+      userSelections.value[host] = {
+        subject: [""],
+        system: "",
+        protocol: "",
+        variant: "",
+        branch: "",
+      };
+    }
+  };
+
+  const applyDerivedUpdate = (item) => {
+    const { host, status_type, status_value } = item;
+    if (!host || typeof status_type === "undefined") return;
+
+    ensureDropdownHost(host);
+
+    switch (status_type) {
+      case "animalOptions":
+        dropdowns.value[host].animalOptions = String(status_value || "").split(
+          ","
+        );
+        break;
+      case "systems":
+        dropdowns.value[host].systemOptions = String(status_value || "").split(
+          " "
+        );
+        break;
+      case "protocols":
+        dropdowns.value[host].protocolOptions = String(
+          status_value || ""
+        ).split(" ");
+        break;
+      case "variants":
+        dropdowns.value[host].variantOptions = String(status_value || "").split(
+          " "
+        );
+        break;
+      case "branches":
+        dropdowns.value[host].branchOptions = String(status_value || "").split(
+          " "
+        );
+        break;
+
+      case "subject":
+        ensureSelectionHost(host);
+        userSelections.value[host].subject = Array.isArray(status_value)
+          ? status_value
+          : [status_value];
+        break;
+      case "system":
+        ensureSelectionHost(host);
+        userSelections.value[host].system = Array.isArray(status_value)
+          ? status_value
+          : [status_value];
+        break;
+      case "protocol":
+        ensureSelectionHost(host);
+        userSelections.value[host].protocol = Array.isArray(status_value)
+          ? status_value
+          : [status_value];
+        break;
+      case "variant":
+        ensureSelectionHost(host);
+        userSelections.value[host].variant = Array.isArray(status_value)
+          ? status_value
+          : [status_value];
+        break;
+      case "branch": {
+        ensureSelectionHost(host);
+        const incoming = Array.isArray(status_value)
+          ? status_value[0]
+          : status_value;
+        const opts = dropdowns.value[host].branchOptions || [];
+        if (incoming && !opts.includes(incoming)) {
+          dropdowns.value[host].branchOptions = [...opts, incoming];
+        }
+        userSelections.value[host].branch = incoming;
+        break;
+      }
+
+      case "running":
+        runningStatus.value[host] = String(status_value) === "1";
+        break;
+      case "status":
+        loadingDeviceStatus.value[host] = status_value === "loading";
+        break;
+      case "loading_progress":
+        try {
+          const progressData = JSON.parse(status_value);
+          loadingProgress.value[host] = progressData;
+          loadingDeviceStatus.value[host] = progressData?.stage !== "complete";
+        } catch (e) {
+          console.error("Failed to parse loading_progress JSON:", e);
+        }
+        break;
+    }
+  };
+
   const connect = () => {
     const hostname = window.location.hostname;
     // socket.value = new WebSocket(`ws://${hostname}:${port}`); // use IP thats hosting this webpage for the socket
@@ -38,22 +173,30 @@ export default function useWebSocket(
       try {
         const parsedData = JSON.parse(event.data);
         if (parsedData.type === "status" && Array.isArray(parsedData.data)) {
-          statusData.value = parsedData.data;
-          // console.log(statusData.value);
+          // Full snapshot
+          const rows = parsedData.data;
+          // Normalize by latest per (host,status_type)
+          const latestByKey = new Map();
+          for (const row of rows) {
+            const key = `${row.host}|${row.status_type}`;
+            const ts = Date.parse(row.sys_time || 0) || 0;
+            const prev = latestByKey.get(key);
+            const prevTs = prev ? Date.parse(prev.sys_time || 0) || 0 : -1;
+            if (!prev || ts >= prevTs) latestByKey.set(key, row);
+          }
+          // Upsert and apply derived updates once per key
+          latestByKey.forEach((item) => {
+            upsertStatusEntry(item);
+            applyDerivedUpdate(item);
+          });
         } else if (
           parsedData.type === "status_changes" &&
           typeof parsedData.data === "object"
         ) {
+          // Single-row update
           const item = parsedData.data;
-          const existingIndex = statusData.value.findIndex(
-            (entry) =>
-              entry.subject === item.subject &&
-              entry.host === item.host &&
-              entry.status_type === item.status_type
-          );
-          if (existingIndex !== -1) {
-            statusData.value[existingIndex] = item;
-          }
+          upsertStatusEntry(item);
+          applyDerivedUpdate(item);
         } else if (
           parsedData.type === "commStatus" &&
           typeof parsedData.data === "object"

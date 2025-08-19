@@ -246,11 +246,12 @@
                           v-bind="scope.itemProps"
                           style="padding-left: 16px"
                           @click="
+                            focusedBranchHost = device.address;
                             handleUserSelection(
                               scope.opt,
                               device.address,
                               'branch'
-                            )
+                            );
                           "
                         >
                           <q-item-section>
@@ -791,6 +792,8 @@ const loadingProgress = ref({});
 const hoveredLoadingHost = ref(null);
 const showAddOptionsDialog = ref(false);
 const showQueryBuilderDialog = ref(false);
+const prevBranchByHost = ref({});
+const focusedBranchHost = ref(null);
 
 const showParamsDialog = ref(false);
 const paramNames = ref([]); // e.g. ["nr", "nplanks", ...]
@@ -1486,105 +1489,12 @@ onMounted(() => {
     server_ip,
     ws_port,
     sql_table_response,
-    listboxOptions
-  );
-
-  watch(
-    statusData,
-    (newData) => {
-      dropdowns.value = {};
-      newData.forEach((entry) => {
-        const { host, status_type, status_value } = entry;
-
-        initializeDropdown(host);
-
-        if (status_type && status_value !== undefined) {
-          // Ensure status_value exists
-          // console.log("new status_value: ", host);
-          switch (status_type) {
-            case "animalOptions":
-              dropdowns.value[host].animalOptions = status_value.split(",");
-              break;
-            case "systems":
-              dropdowns.value[host].systemOptions = status_value.split(" ");
-              break;
-            case "protocols":
-              dropdowns.value[host].protocolOptions = status_value.split(" ");
-              break;
-            case "variants":
-              dropdowns.value[host].variantOptions = status_value.split(" ");
-              break;
-            case "branches":
-              dropdowns.value[host].branchOptions = status_value.split(" ");
-              break;
-
-            case "subject":
-              initializeSelection(host);
-              userSelections.value[host].subject = Array.isArray(status_value)
-                ? status_value
-                : [status_value];
-              break;
-            case "system":
-              initializeSelection(host);
-              userSelections.value[host].system = Array.isArray(status_value)
-                ? status_value
-                : [status_value];
-              break;
-
-            case "protocol":
-              initializeSelection(host);
-              userSelections.value[host].protocol = Array.isArray(status_value)
-                ? status_value
-                : [status_value];
-              break;
-
-            case "variant":
-              initializeSelection(host);
-              userSelections.value[host].variant = Array.isArray(status_value)
-                ? status_value
-                : [status_value];
-              break;
-
-            case "branch":
-              initializeSelection(host);
-              userSelections.value[host].branch = Array.isArray(status_value)
-                ? status_value[0] // Assuming branch is single select
-                : status_value;
-              break;
-
-            case "running":
-              runningStatus.value[host] = status_value === "1";
-              break;
-            case "status": // Added to handle 'loading' status
-              if (status_value === "loading") {
-                loadingDeviceStatus.value[host] = true;
-              } else {
-                // Assuming any other status_value for 'status' type means loading is done or not applicable
-                loadingDeviceStatus.value[host] = false;
-              }
-              break;
-            case "loading_progress":
-              try {
-                const progressData = JSON.parse(status_value);
-                if (host === hoveredLoadingHost.value) {
-                  console.log("[loading_progress]", host, progressData);
-                }
-                loadingProgress.value[host] = progressData;
-                if (progressData.stage === "complete") {
-                  // Also update the old loading status to ensure everything is in sync
-                  loadingDeviceStatus.value[host] = false;
-                } else {
-                  loadingDeviceStatus.value[host] = true;
-                }
-              } catch (e) {
-                console.error("Failed to parse loading_progress JSON:", e);
-              }
-              break;
-          }
-        }
-      });
-    },
-    { deep: true }
+    listboxOptions,
+    dropdowns,
+    userSelections,
+    runningStatus,
+    loadingDeviceStatus,
+    loadingProgress
   );
 });
 
