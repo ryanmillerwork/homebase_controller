@@ -352,35 +352,47 @@
                   </div>
                 </div>
               </div>
-              <div>
-                <div class="row justify-content-between">
-                  <!-- Button to open task parameter picker -->
-                  <q-btn
-                    outline
-                    color="grey-8"
-                    class="bold-icon"
-                    style="width: 48%; height: 55px"
-                    label="Task parameters"
-                    @click="openParamsDialog(device.address)"
-                    :disable="
-                      getRunningStatus(device.address) ||
-                      getLoadingDeviceStatus(device.address)
-                    "
-                  ></q-btn>
+              <div class="q-mt-md">
+                <div class="row align-items-center">
+                  <div class="col-6 col-sm-6 q-mb-xs q-pr-lg">
+                    <!-- Load Defaults button -->
+                    <q-btn
+                      outline
+                      color="grey-8"
+                      class="bold-icon full-width"
+                      style="height: 55px"
+                      @click="presetLoad(device.address)"
+                      :disable="
+                        getRunningStatus(device.address) ||
+                        getLoadingDeviceStatus(device.address)
+                      "
+                    >
+                      <div class="btn-label-responsive">
+                        <span class="btn-text-md">Load Defaults</span>
+                        <span class="btn-text-sm">Load<br />Defaults</span>
+                      </div>
+                    </q-btn>
+                  </div>
 
-                  <!-- Button to open system parameter picker -->
-                  <q-btn
-                    outline
-                    color="grey-8"
-                    class="bold-icon"
-                    style="width: 48%; height: 55px"
-                    label="System parameters"
-                    @click="openSystemParamsDialog(device.address)"
-                    :disable="
-                      getRunningStatus(device.address) ||
-                      getLoadingDeviceStatus(device.address)
-                    "
-                  ></q-btn>
+                  <div class="col-6 col-sm-6 q-mb-xs q-pl-lg">
+                    <!-- Combined button to open task + system settings -->
+                    <q-btn
+                      outline
+                      color="grey-8"
+                      class="bold-icon full-width"
+                      style="height: 55px"
+                      @click="openCombinedParamsDialog(device.address)"
+                      :disable="
+                        getRunningStatus(device.address) ||
+                        getLoadingDeviceStatus(device.address)
+                      "
+                    >
+                      <div class="btn-label-responsive">
+                        <span class="btn-text-md">CHANGE SETTINGS</span>
+                        <span class="btn-text-sm">CHANGE<br />SETTINGS</span>
+                      </div>
+                    </q-btn>
+                  </div>
                 </div>
               </div>
 
@@ -632,71 +644,144 @@
     />
 
     <q-dialog
-      v-model="showParamsDialog"
-      persistent
-      @show="onTaskModalShow"
-      @hide="onTaskModalHide"
+      v-model="showCombinedParamsDialog"
+      @show="
+        onTaskModalShow();
+        onSystemModalShow();
+      "
+      @hide="
+        onTaskModalHide();
+        onSystemModalHide();
+        closeCombinedParamsDialog();
+      "
     >
       <q-card class="modal-card">
-        <q-card-section class="modal-header text-h6">
-          Task Parameters
-        </q-card-section>
-
+        <q-btn
+          class="modal-close-btn"
+          flat
+          round
+          dense
+          icon="close"
+          @click="closeCombinedParamsDialog"
+        />
         <div
-          class="q-card__section q-card__section--vert modal-body"
-          ref="taskModalBodyEl"
+          class="q-card__section q-card__section--vert modal-content-section"
         >
-          <div v-if="paramsForTask?.paramNames?.length">
-            <div
-              v-for="(name, idx) in paramsForTask.paramNames"
-              :key="idx"
-              class="q-mb-md"
+          <div class="modal-tabs-header">
+            <q-tabs
+              v-model="tab"
+              dense
+              class="text-grey"
+              active-color="primary"
+              indicator-color="primary"
+              align="justify"
+              narrow-indicator
             >
-              <q-select
-                :model-value="getTaskDisplayValue(name)"
-                @update:model-value="markTaskAsEdited(name, $event)"
-                :options="paramsForTask.paramOptions[name]"
-                :label="name"
-                :class="getTaskInputClass(name)"
-                filled
-                dense
-                emit-value
-                map-options
-              >
-                <template v-slot:selected>
-                  {{
-                    getLabelForValue(
-                      getTaskDisplayValue(name),
-                      paramsForTask.paramOptions[name]
-                    )
-                  }}
-                </template>
-              </q-select>
-            </div>
+              <q-tab name="task" label="Task" />
+              <q-tab name="system" label="System" />
+            </q-tabs>
+
+            <q-separator />
           </div>
-          <div v-else>
-            <em>No parameter data found</em>
-          </div>
+
+          <q-tab-panels v-model="tab" animated class="modal-tab-panels">
+            <q-tab-panel name="task">
+              <div class="modal-body" ref="taskModalBodyEl">
+                <div v-if="paramsForTask?.paramNames?.length">
+                  <div
+                    v-for="(name, idx) in paramsForTask.paramNames"
+                    :key="idx"
+                    class="q-mb-md"
+                  >
+                    <q-select
+                      :model-value="getTaskDisplayValue(name)"
+                      @update:model-value="markTaskAsEdited(name, $event)"
+                      :options="paramsForTask.paramOptions[name]"
+                      :label="name"
+                      :class="getTaskInputClass(name)"
+                      filled
+                      dense
+                      emit-value
+                      map-options
+                    >
+                      <template v-slot:selected>
+                        {{
+                          getLabelForValue(
+                            getTaskDisplayValue(name),
+                            paramsForTask.paramOptions[name]
+                          )
+                        }}
+                      </template>
+                    </q-select>
+                  </div>
+                </div>
+                <div v-else>
+                  <em>No parameter data found</em>
+                </div>
+              </div>
+            </q-tab-panel>
+
+            <q-tab-panel name="system">
+              <div class="modal-body" ref="systemModalBodyEl">
+                <div v-if="paramsForHost[selectedSystemHost]?.names?.length">
+                  <div
+                    v-for="(name, idx) in paramsForHost[selectedSystemHost]
+                      .names"
+                    :key="idx"
+                    class="q-mb-md"
+                  >
+                    <q-input
+                      :modelValue="getDisplayValue(name)"
+                      @update:modelValue="markAsEdited(name, $event)"
+                      :label="name"
+                      :class="getInputClass(name)"
+                      filled
+                      dense
+                    />
+                  </div>
+                </div>
+                <div v-else>
+                  <em>No parameter data found</em>
+                </div>
+              </div>
+            </q-tab-panel>
+          </q-tab-panels>
         </div>
 
         <q-card-section class="modal-footer">
           <q-separator />
-          <div class="row justify-end q-gutter-sm q-mt-sm">
+          <div class="row justify-end q-gutter-sm q-mt-sm no-wrap">
             <q-btn
               flat
-              label="Cancel"
+              label="Save Default"
               color="primary"
-              @click="closeTaskParamsDialog"
-            />
+              @click="presetSave(selectedHost)"
+              :text-color="!canSaveDefaults ? 'grey-6' : 'primary'"
+              :disable="!canSaveDefaults"
+            >
+              <q-tooltip
+                v-if="!canSaveDefaults"
+                anchor="top middle"
+                self="bottom middle"
+              >
+                {{ saveDefaultsDisabledReason }}
+              </q-tooltip>
+            </q-btn>
             <q-btn
               flat
-              label="Save"
+              label="Apply"
               color="primary"
-              :disable="getRunningStatus(selectedHost)"
-              @click="saveTaskParams"
+              :text-color="
+                getRunningStatus(selectedHost) || !hasAnyEdits
+                  ? 'grey-6'
+                  : 'primary'
+              "
+              :disable="getRunningStatus(selectedHost) || !hasAnyEdits"
+              @click="saveCombinedParams"
             />
           </div>
         </q-card-section>
+
         <div v-if="showTaskScrollIndicator" class="scroll-indicator-wrapper">
           <q-icon
             name="keyboard_arrow_down"
@@ -704,63 +789,6 @@
             size="2.5em"
           />
         </div>
-      </q-card>
-    </q-dialog>
-
-    <q-dialog
-      v-model="showSystemParamsDialog"
-      persistent
-      @show="onSystemModalShow"
-      @hide="onSystemModalHide"
-    >
-      <q-card class="modal-card">
-        <q-card-section class="modal-header text-h6">
-          System Parameters
-        </q-card-section>
-
-        <div
-          class="q-card__section q-card__section--vert modal-body"
-          ref="systemModalBodyEl"
-        >
-          <div v-if="paramsForHost[selectedSystemHost]?.names?.length">
-            <div
-              v-for="(name, idx) in paramsForHost[selectedSystemHost].names"
-              :key="idx"
-              class="q-mb-md"
-            >
-              <q-input
-                :modelValue="getDisplayValue(name)"
-                @update:modelValue="markAsEdited(name, $event)"
-                :label="name"
-                :class="getInputClass(name)"
-                filled
-                dense
-              />
-            </div>
-          </div>
-          <div v-else>
-            <em>No parameter data found</em>
-          </div>
-        </div>
-
-        <q-card-section class="modal-footer">
-          <q-separator />
-          <div class="row justify-end q-gutter-sm q-mt-sm">
-            <q-btn
-              flat
-              label="Cancel"
-              color="primary"
-              @click="closeSystemParamsDialog"
-            />
-            <q-btn
-              flat
-              label="Save"
-              color="primary"
-              @click="saveSystemTaskParams(selectedSystemHost)"
-              :disable="getRunningStatus(selectedSystemHost)"
-            />
-          </div>
-        </q-card-section>
         <div v-if="showSystemScrollIndicator" class="scroll-indicator-wrapper">
           <q-icon
             name="keyboard_arrow_down"
@@ -848,6 +876,7 @@ const prevBranchByHost = ref({});
 const focusedBranchHost = ref(null);
 
 const showParamsDialog = ref(false);
+const showCombinedParamsDialog = ref(false);
 const paramNames = ref([]); // e.g. ["nr", "nplanks", ...]
 const paramOptions = ref({}); // e.g. { nr: [50,100,200], nplanks: [1], ... }
 const selectedParams = ref({}); // e.g. { nr: 50, nplanks: 1, ... }
@@ -862,6 +891,7 @@ const systemParamNames = ref([]);
 const selectedSystemParams = ref({});
 const selectedSystemHost = ref(null); // The host we want to configure
 const userEditedValues = ref({});
+const tab = ref("task");
 
 // Refs for modal scroll indicators
 const taskModalBodyEl = ref(null);
@@ -872,6 +902,37 @@ const showSystemScrollIndicator = ref(false);
 // Track edited state for each parameter
 const editedTaskParams = ref({});
 const editedParams = ref({});
+const hasAnyEdits = computed(() => {
+  return (
+    Object.keys(userEditedTaskValues.value || {}).length > 0 ||
+    Object.keys(userEditedValues.value || {}).length > 0
+  );
+});
+
+const isHostFullyLoaded = (host) => {
+  if (!host) return false;
+  const progress = loadingProgress.value?.[host];
+  if (!progress) return false;
+  // Consider complete if stage reports complete or percent-like field hits 100
+  if (String(progress.stage).toLowerCase() === "complete") return true;
+  if (Number(progress.percent) === 100) return true;
+  if (Number(progress.pc) === 100) return true;
+  return false;
+};
+
+const canSaveDefaults = computed(() => {
+  return !hasAnyEdits.value && isHostFullyLoaded(selectedHost.value);
+});
+
+const saveDefaultsDisabledReason = computed(() => {
+  if (hasAnyEdits.value) {
+    return "Apply changes before saving defaults";
+  }
+  if (!isHostFullyLoaded(selectedHost.value)) {
+    return "Waiting for settings to finish loading";
+  }
+  return "";
+});
 
 // Mark a task parameter as edited
 const markTaskAsEdited = (name, newValue) => {
@@ -1012,6 +1073,15 @@ const onSystemModalShow = () => {
   }, 100);
 };
 
+watch(tab, (newVal) => {
+  // Refresh scroll indicators when switching tabs
+  if (newVal === "task") {
+    onTaskModalShow();
+  } else if (newVal === "system") {
+    onSystemModalShow();
+  }
+});
+
 const onSystemModalHide = () => {
   // Simply reset the state; no need to touch the DOM element
   showSystemScrollIndicator.value = false;
@@ -1021,8 +1091,8 @@ const newDeviceName = ref("");
 const newDeviceIP = ref("");
 const newsubjectName = ref("");
 const currentTime = ref(Date.now());
-const server_ip = window.location.hostname; // use this if the server is running on the same machine as the client
-// const server_ip = "10.2.145.85"; // use this for testing
+// const server_ip = window.location.hostname; // use this if the server is running on the same machine as the client
+const server_ip = "10.2.145.85"; // use this for testing
 // const server_ip = "hb-server"; // or this
 const ws_port = "8080";
 const sql_table_response = ref([]);
@@ -1081,6 +1151,27 @@ function closeSystemParamsDialog() {
 
   // Close the dialog
   showSystemParamsDialog.value = false;
+}
+
+function openCombinedParamsDialog(address) {
+  selectedHost.value = address;
+  selectedSystemHost.value = address;
+  if (!userSettings.value[address]) {
+    userSettings.value[address] = {};
+  }
+  tab.value = "task";
+  showCombinedParamsDialog.value = true;
+}
+
+function closeCombinedParamsDialog() {
+  if (selectedSystemHost.value) {
+    delete userSettings.value[selectedSystemHost.value];
+  }
+  editedTaskParams.value = {};
+  userEditedTaskValues.value = {};
+  editedParams.value = {};
+  userEditedValues.value = {};
+  showCombinedParamsDialog.value = false;
 }
 
 const imageSourcesByHost = computed(() => {
@@ -1356,6 +1447,27 @@ function splitByTopLevelSpaces(inputStr) {
   return result;
 }
 
+// Helper to build and send task params without closing any specific dialog
+function sendTaskParamsSilently() {
+  if (!paramsForTask.value || !selectedHost.value) {
+    console.error("No task parameters or host selected for saving.");
+    return false;
+  }
+
+  const userEdited = userEditedTaskValues.value;
+  if (Object.keys(userEdited).length === 0) {
+    return false;
+  }
+
+  const paramsCommand = buildParamsCommand(userEdited);
+  sendMessage("esscmd", selectedHost.value, paramsCommand);
+
+  editedTaskParams.value = {};
+  userEditedTaskValues.value = {};
+  console.log(`Command sent to ${selectedHost.value}:`, paramsCommand);
+  return true;
+}
+
 function saveTaskParams() {
   if (!paramsForTask.value || !selectedHost.value) {
     console.error("No task parameters or host selected for saving.");
@@ -1383,6 +1495,25 @@ function saveTaskParams() {
   userEditedTaskValues.value = {};
 
   console.log(`Command sent to ${selectedHost.value}:`, paramsCommand);
+}
+
+// Helper to build and send system params without closing any specific dialog
+function sendSystemParamsSilently(deviceAddress) {
+  const userEdited = userEditedValues.value;
+  if (Object.keys(userEdited).length === 0) {
+    return false;
+  }
+
+  let command = "::ess::set_params ";
+  for (const [paramName, paramVal] of Object.entries(userEdited)) {
+    command += `${paramName} ${paramVal} `;
+  }
+  command = command.trim();
+  sendMessage("esscmd", deviceAddress, command);
+  editedParams.value = {};
+  userEditedValues.value = {};
+  console.log(`Command sent to ${deviceAddress}:`, command);
+  return true;
 }
 
 function saveSystemTaskParams(deviceAddress) {
@@ -1414,6 +1545,27 @@ function saveSystemTaskParams(deviceAddress) {
   showSystemParamsDialog.value = false;
 
   console.log(`Command sent to ${deviceAddress}:`, command);
+}
+
+function saveCombinedParams() {
+  const hasSystemEdits = Object.keys(userEditedValues.value).length > 0;
+  const hasTaskEdits = Object.keys(userEditedTaskValues.value).length > 0;
+
+  if (!hasSystemEdits && !hasTaskEdits) {
+    console.error("No user-edited parameters to save.");
+    return;
+  }
+
+  // Save order: task first, then system
+  // sometimes the task reload also resets the system params
+  if (hasTaskEdits) {
+    sendTaskParamsSilently();
+  }
+  if (hasSystemEdits) {
+    sendSystemParamsSilently(selectedSystemHost.value);
+  }
+
+  // Do not close the dialog; let the UI update via websocket messages
 }
 
 function buildParamsCommand(params) {
@@ -1566,7 +1718,7 @@ function handleUserSelection(val, host, type) {
   let msg = "";
   switch (type) {
     case "subject":
-      msg = `::ess::set_subject ${val}`;
+      msg = `evalNoReply {::ess::set_subject ${val}}`;
       break;
     case "system":
       // Only system is specified
@@ -1670,6 +1822,14 @@ function resetTask(host) {
   const variant = userSelections.value[host].variant;
   const cmd = `::ess::stop; evalNoReply {::ess::load_system ${systemForVariant} ${protocolForVariant} ${variant}}`;
   sendMessage("esscmd", host, cmd);
+}
+
+function presetSave(host) {
+  sendMessage("preset_save", host);
+}
+
+function presetLoad(host) {
+  sendMessage("preset_load", host);
 }
 
 function juice_reward(host) {
@@ -2152,6 +2312,7 @@ function handleUpdateJuicerFlow() {
   flex-direction: column;
   max-height: 80vh;
   position: relative; /* Set as the positioning context for the chevron */
+  overflow: hidden; /* prevent card-level scrolling */
 }
 
 .modal-header {
@@ -2164,8 +2325,6 @@ function handleUpdateJuicerFlow() {
 }
 
 .modal-body {
-  flex: 1;
-  overflow-y: scroll;
   padding: 16px;
   scrollbar-width: thin;
   scrollbar-color: #027be3 #e0e0e0;
@@ -2186,11 +2345,41 @@ function handleUpdateJuicerFlow() {
 }
 
 .modal-footer {
+  background: white;
+  padding-top: 0;
+}
+
+/* Prevent footer buttons from wrapping onto multiple lines on small screens */
+.no-wrap {
+  flex-wrap: nowrap !important;
+}
+
+/* Sticky tabs header and scrollable panels in modal */
+.modal-content-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1; /* take remaining height between header and footer */
+  min-height: 0; /* allow child to shrink for overflow */
+  height: 100%;
+}
+
+.modal-tabs-header {
   position: sticky;
-  bottom: 0;
+  top: 0;
   background: white;
   z-index: 2;
-  padding-top: 0;
+}
+
+.modal-tab-panels {
+  flex: 1;
+  min-height: 0; /* allow panels to shrink and enable inner scroll */
+  height: 100%;
+  overflow-y: auto; /* scroll the panel content, tabs stay fixed */
+}
+
+/* Make each tab panel fill available height so its content can scroll */
+.modal-tab-panels .q-tab-panel {
+  padding: 0; /* we handle padding inside .modal-body */
 }
 
 @keyframes bounce {
@@ -2223,5 +2412,36 @@ function handleUpdateJuicerFlow() {
   color: #bdbdbd;
   animation: bounce 2s infinite;
   z-index: 10; /* Ensure it's on top of the content */
+}
+
+/* close button in top-right of modal */
+.modal-close-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 3;
+}
+
+/* Responsive button labels: two lines on small, single line on md+ */
+.btn-label-responsive {
+  width: 100%;
+  text-align: center;
+}
+
+.btn-text-sm {
+  display: inline-block;
+}
+
+.btn-text-md {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .btn-text-sm {
+    display: none;
+  }
+  .btn-text-md {
+    display: inline-block;
+  }
 }
 </style>

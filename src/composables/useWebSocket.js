@@ -298,6 +298,28 @@ export default function useWebSocket(
               },
             ],
           });
+        } else if (parsedData.type === "preset_load_error") {
+          const msg = `Preset load failed${
+            parsedData.ip ? ` for ${parsedData.ip}` : ""
+          }: ${parsedData.error || "Unknown error"}`;
+          console.error(msg);
+          $q.notify({
+            type: "negative",
+            message: msg,
+            timeout: 60000,
+            actions: [{ label: "Dismiss", color: "white", handler: () => {} }],
+          });
+        } else if (parsedData.type === "preset_save_error") {
+          const msg = `Preset save failed${
+            parsedData.ip ? ` for ${parsedData.ip}` : ""
+          }: ${parsedData.error || "Unknown error"}`;
+          console.error(msg);
+          $q.notify({
+            type: "negative",
+            message: msg,
+            timeout: 60000,
+            actions: [{ label: "Dismiss", color: "white", handler: () => {} }],
+          });
         }
       } catch (error) {
         console.error("Error parsing message data:", error);
@@ -326,11 +348,14 @@ export default function useWebSocket(
 }
 
 export function sendMessage(msg_type, ip, msg) {
-  const message = JSON.stringify({
+  const payload = {
     msg_type,
     ip,
-    msg: msg + "\n", // Add newline to the msg content
-  });
+  };
+  if (typeof msg !== "undefined" && msg !== null) {
+    payload.msg = String(msg) + "\n"; // Add newline to the msg content
+  }
+  const message = JSON.stringify(payload);
   if (socket.value && socket.value.readyState === WebSocket.OPEN) {
     socket.value.send(message);
     console.log("sending: ", message);
