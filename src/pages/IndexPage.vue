@@ -1091,9 +1091,9 @@ const newDeviceName = ref("");
 const newDeviceIP = ref("");
 const newsubjectName = ref("");
 const currentTime = ref(Date.now());
-// const server_ip = window.location.hostname; // use this if the server is running on the same machine as the client
+const server_ip = window.location.hostname; // use this if the server is running on the same machine as the client
 // const server_ip = "10.2.145.85"; // use this for testing
-const server_ip = "hb-server"; // or this
+// const server_ip = "hb-server"; // or this
 const ws_port = "8080";
 const sql_table_response = ref([]);
 const listboxOptions = ref({
@@ -1354,11 +1354,11 @@ function sendSystemParamsSilently(deviceAddress) {
     return false;
   }
 
-  let command = "send ess {::ess::set_params ";
+  let command = "::ess::set_params ";
   for (const [paramName, paramVal] of Object.entries(userEdited)) {
     command += `${paramName} ${paramVal} `;
   }
-  command = command.trim() + "}";
+  command = command.trim();
   sendMessage("esscmd", deviceAddress, command);
   editedParams.value = {};
   userEditedValues.value = {};
@@ -1420,7 +1420,7 @@ function saveCombinedParams() {
 
 function buildParamsCommand(params) {
   // Start with the command prefix and opening brace
-  let command = "send ess {::ess::set_variant_args {";
+  let command = "::ess::set_variant_args {";
 
   // For each parameter
   for (const [paramName, paramVal] of Object.entries(params)) {
@@ -1428,7 +1428,7 @@ function buildParamsCommand(params) {
   }
 
   // Remove trailing space and add closing brace
-  const finalCommand = command.trim() + "}; evalNoReply ::ess::reload_variant}";
+  const finalCommand = command.trim() + "}; ::ess::reload_variant";
   return finalCommand;
 }
 
@@ -1683,7 +1683,7 @@ function presetLoad(host) {
 }
 
 function juice_reward(host) {
-  const msg = `send ess {::ess::reward 1}`;
+  const msg = `send juicer {reward 1}`;
   sendMessage("esscmd", host, msg);
 }
 
@@ -1697,7 +1697,7 @@ const juicerCalibration = ref({
 function run_juicer_calibration(host) {
   // calibrate takes iters on off
   const { iterations, onMs, offMs } = juicerCalibration.value;
-  const msg = `[set ::ess::current(juicer)] calibrate ${iterations} ${onMs} ${offMs}`;
+  const msg = `send juicer {calibrate ${iterations} ${onMs} ${offMs}}`;
   sendMessage("esscmd", host, msg);
 }
 
@@ -1708,7 +1708,7 @@ function update_juicer_flow_rate(host, observed_volume) {
   // Flow rate in ml/s, rounded to 2 decimal places
   const flowRate =
     Math.round((observed_volume / assumedRuntimeSec) * 100) / 100;
-  const msg = `[set ::ess::current(juicer)] set flow_rate ${flowRate}`;
+  const msg = `send juicer {set_flow_rate ${flowRate}}`;
   sendMessage("esscmd", host, msg);
 }
 
