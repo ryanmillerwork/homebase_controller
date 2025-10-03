@@ -1092,8 +1092,8 @@ const newDeviceIP = ref("");
 const newsubjectName = ref("");
 const currentTime = ref(Date.now());
 // const server_ip = window.location.hostname; // use this if the server is running on the same machine as the client
-const server_ip = "10.2.145.85"; // use this for testing
-// const server_ip = "hb-server"; // or this
+// const server_ip = "10.2.145.85"; // use this for testing
+const server_ip = "hb-server"; // or this
 const ws_port = "8080";
 const sql_table_response = ref([]);
 const listboxOptions = ref({
@@ -1209,58 +1209,53 @@ const imageSourcesByHost = computed(() => {
 const paramsForTask = computed(() => {
   if (!selectedHost.value) return null;
 
-  const row = statusData.value.find(
+  // Prefer structured JSON if available
+  const jsonRow = statusData.value.find(
     (item) =>
-      item.host === selectedHost.value && item.status_type === "variant_info"
+      item.host === selectedHost.value &&
+      item.status_type === "variant_info_json"
   );
 
-  if (!row || !row.status_value) {
-    return {
-      paramNames: [],
-      paramOptions: {},
-      selectedParams: {},
-    };
+  if (jsonRow && jsonRow.status_value) {
+    try {
+      const data = JSON.parse(jsonRow.status_value);
+      const paramNames = Array.isArray(data.loader_arg_names)
+        ? data.loader_arg_names
+        : [];
+
+      const paramOptions = {};
+      paramNames.forEach((name) => {
+        const opts = (data.options && data.options[name]) || [];
+        paramOptions[name] = opts.map((o) => ({
+          label: String(o.label ?? o.value ?? ""),
+          value: String(o.value ?? o.label ?? ""),
+        }));
+      });
+
+      const selectedParams = {};
+      const args = Array.isArray(data.loader_args) ? data.loader_args : [];
+      paramNames.forEach((name, i) => {
+        const optsForName = Array.isArray(data.options?.[name])
+          ? data.options[name]
+          : [];
+        const selectedOpt = optsForName.find((o) => o && o.selected);
+        let value =
+          typeof selectedOpt !== "undefined" && selectedOpt !== null
+            ? selectedOpt.value
+            : args[i] ?? "";
+        if (typeof value !== "string") {
+          value = String(value);
+        }
+        selectedParams[name] = value;
+      });
+
+      return { paramNames, paramOptions, selectedParams };
+    } catch (e) {
+      console.error("Failed to parse variant_info_json:", e);
+    }
   }
 
-  const fullStr = row.status_value;
-
-  // Parse loader_arg_names
-  const namesMatch = fullStr.match(/loader_arg_names\s*\{([^}]+)\}/);
-  const paramNames = namesMatch ? namesMatch[1].trim().split(/\s+/) : [];
-
-  // Parse loader_arg_options
-  const optionsBlock = extractBlock(fullStr, "loader_arg_options {");
-  console.log(
-    `Processing param: ${paramNames[0]}, optionsBlock: '${optionsBlock}'`
-  );
-
-  const paramOptions = optionsBlock ? parseLoaderArgOptions(optionsBlock) : {};
-
-  // Parse loader_args
-  const argsBlock = extractBlock(fullStr, "loader_args {");
-  const tokens = argsBlock ? splitByTopLevelSpaces(argsBlock) : [];
-  const selectedParams = {};
-  // paramNames.forEach((name, i) => {
-  //   selectedParams[name] = tokens[i] || "";
-  // });
-
-  paramNames.forEach((name, i) => {
-    let value = tokens[i] || "";
-
-    // Remove space after '{' at the beginning
-    if (value.startsWith("{ ")) {
-      value = "{" + value.slice(2);
-    }
-
-    // Remove space before '}' at the end
-    if (value.endsWith(" }")) {
-      value = value.slice(0, -2) + "}";
-    }
-
-    selectedParams[name] = value;
-  });
-
-  return { paramNames, paramOptions, selectedParams };
+  return { paramNames: [], paramOptions: {}, selectedParams: {} };
 });
 
 const paramsForHost = computed(() => {
@@ -1300,152 +1295,7 @@ const displayParams = computed(() => {
   }, {});
 });
 
-function extractBlock(str, marker) {
-  const startIndex = str.indexOf(marker);
-  if (startIndex === -1) return null;
-
-  const openCurlyIndex = str.indexOf("{", startIndex);
-  if (openCurlyIndex === -1) return null;
-
-  let depth = 0;
-  let i = openCurlyIndex;
-  const len = str.length;
-
-  for (; i < len; i++) {
-    if (str[i] === "{") {
-      depth++;
-    } else if (str[i] === "}") {
-      depth--;
-      if (depth === 0) {
-        return str.substring(openCurlyIndex + 1, i); // Exclude outer braces
-      }
-    }
-  }
-  return null; // If braces are unbalanced
-}
-
-function parseLoaderArgOptions(raw) {
-  const result = {};
-
-  // Match each parameter name and its entire options block
-  const paramRegex = /(\w+)\s\{\{(.*?)\}\}(?=\s+\w+\s\{\{|$)/gs;
-  let paramMatch;
-
-  while ((paramMatch = paramRegex.exec(raw)) !== null) {
-    const paramName = paramMatch[1];
-    const optionsBlock = paramMatch[2];
-
-    let extractedPairs = [];
-
-    // ---- BEGIN NEW PARSING LOGIC ----
-    let processedOptionsBlock = optionsBlock.trim();
-
-    // Heuristic: Attempt to fix a potentially missing closing brace on the very last pair
-    const lastOpenBrace = processedOptionsBlock.lastIndexOf("{");
-    if (lastOpenBrace > -1) {
-      // Check if this lastOpenBrace is indeed not closed by the end of the string
-      // and that it's not an empty {} block which might be valid for some other param type
-      const segmentAfterLastOpenBrace = processedOptionsBlock.substring(
-        lastOpenBrace + 1
-      );
-      if (
-        processedOptionsBlock.indexOf("}", lastOpenBrace) === -1 &&
-        segmentAfterLastOpenBrace.trim() !== ""
-      ) {
-        // Ensure the segment is not empty and seems to contain content before adding a brace
-        if (
-          segmentAfterLastOpenBrace
-            .trim()
-            .split(/\s+/)
-            .filter((s) => s.length > 0).length >= 1
-        ) {
-          processedOptionsBlock += "}";
-        }
-      }
-    }
-
-    if (processedOptionsBlock) {
-      // Replace '}\s*{' with a unique delimiter, then split by it.
-      // This handles cases like 'opt1} {opt2} {opt3}' correctly.
-      const segments = processedOptionsBlock
-        .replace(/}\s*{/g, "}|--DELIMITER--|{")
-        .split("|--DELIMITER--|");
-
-      extractedPairs = segments
-        .map((segment) => {
-          let cleanSegment = segment.trim();
-
-          // Remove surrounding {} if present (e.g., '{opt2}' or first/last items if they have them)
-          if (cleanSegment.startsWith("{") && cleanSegment.endsWith("}")) {
-            cleanSegment = cleanSegment.slice(1, -1).trim();
-          } else if (cleanSegment.endsWith("}")) {
-            // Handles the first segment if it was like 'opt1}'
-            cleanSegment = cleanSegment.slice(0, -1).trim();
-          } else if (cleanSegment.startsWith("{")) {
-            // Handles the last segment if it was like '{optN' (after heuristic fix or other malformation)
-            cleanSegment = cleanSegment.slice(1).trim();
-          }
-          // If after all this, segment is empty, or became empty, skip.
-          if (!cleanSegment) return null;
-
-          const tokens = cleanSegment.split(/\s+/).filter((s) => s.length > 0);
-          if (tokens.length === 0) return null;
-
-          const label = tokens[0];
-          let value = tokens.slice(1).join(" ").trim() || label; // Use label as value if no other tokens
-
-          // Specific fix for values that are themselves braced structures
-          if (
-            value.startsWith("{") &&
-            !value.endsWith("}") &&
-            value.includes(" ")
-          ) {
-            // Check brace balance before appending.
-            let openBraces = (value.match(/{/g) || []).length;
-            let closeBraces = (value.match(/}/g) || []).length;
-            if (openBraces > closeBraces) {
-              value += "}";
-            }
-          }
-
-          return { label, value };
-        })
-        .filter((pair) => pair && pair.label); // Filter out nulls or pairs without a label
-    }
-    // ---- END NEW PARSING LOGIC ----
-
-    result[paramName] = extractedPairs;
-  }
-
-  return result;
-}
-
-function splitByTopLevelSpaces(inputStr) {
-  const result = [];
-  let depth = 0;
-  let current = "";
-
-  for (const c of inputStr) {
-    if (c === "{") {
-      depth++;
-    } else if (c === "}") {
-      depth--;
-    }
-
-    if (/\s/.test(c) && depth === 0) {
-      if (current.trim()) {
-        result.push(current.trim());
-        current = "";
-      }
-    } else {
-      current += c;
-    }
-  }
-  if (current.trim()) {
-    result.push(current.trim());
-  }
-  return result;
-}
+// Legacy helpers removed: extractBlock, parseLoaderArgOptions, splitByTopLevelSpaces
 
 // Helper to build and send task params without closing any specific dialog
 function sendTaskParamsSilently() {
@@ -1504,11 +1354,11 @@ function sendSystemParamsSilently(deviceAddress) {
     return false;
   }
 
-  let command = "::ess::set_params ";
+  let command = "send ess {::ess::set_params ";
   for (const [paramName, paramVal] of Object.entries(userEdited)) {
     command += `${paramName} ${paramVal} `;
   }
-  command = command.trim();
+  command = command.trim() + "}";
   sendMessage("esscmd", deviceAddress, command);
   editedParams.value = {};
   userEditedValues.value = {};
@@ -1570,7 +1420,7 @@ function saveCombinedParams() {
 
 function buildParamsCommand(params) {
   // Start with the command prefix and opening brace
-  let command = "::ess::set_variant_args {";
+  let command = "send ess {::ess::set_variant_args {";
 
   // For each parameter
   for (const [paramName, paramVal] of Object.entries(params)) {
@@ -1578,7 +1428,7 @@ function buildParamsCommand(params) {
   }
 
   // Remove trailing space and add closing brace
-  const finalCommand = command.trim() + "}; evalNoReply ::ess::reload_variant";
+  const finalCommand = command.trim() + "}; evalNoReply ::ess::reload_variant}";
   return finalCommand;
 }
 
@@ -1833,14 +1683,14 @@ function presetLoad(host) {
 }
 
 function juice_reward(host) {
-  const msg = `::ess::reward 1`;
+  const msg = `send ess {::ess::reward 1}`;
   sendMessage("esscmd", host, msg);
 }
 
 // Shared juicer calibration configuration
 const juicerCalibration = ref({
   iterations: 500, // number of dispenses
-  onMs: 500, // ms on per dispense
+  onMs: 500, // ms on per dispenseset_variant
   offMs: 500, // ms off between dispenses
 });
 
