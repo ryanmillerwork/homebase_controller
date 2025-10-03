@@ -1209,6 +1209,52 @@ const imageSourcesByHost = computed(() => {
 const paramsForTask = computed(() => {
   if (!selectedHost.value) return null;
 
+  // Prefer JSON variant if available
+  const rowJson = statusData.value.find(
+    (item) =>
+      item.host === selectedHost.value && item.status_type === "variant_info_json"
+  );
+
+  if (rowJson && rowJson.status_value) {
+    try {
+      const json = JSON.parse(rowJson.status_value);
+
+      const names = Array.isArray(json.loader_arg_names)
+        ? json.loader_arg_names
+        : [];
+
+      // Build options map: { name: [{label, value}, ...] }
+      const optionsMap = {};
+      if (json.options && typeof json.options === "object") {
+        for (const name of names) {
+          const arr = json.options[name];
+          if (Array.isArray(arr)) {
+            optionsMap[name] = arr.map((o) => ({ label: o.label, value: o.value }));
+          }
+        }
+      }
+
+      // Build selected params from loader_args in the given order
+      const selected = {};
+      const args = Array.isArray(json.loader_args) ? json.loader_args : [];
+      names.forEach((name, i) => {
+        let value = args[i] ?? "";
+        // Ensure consistent brace spacing, similar to string parser normalization
+        if (typeof value === "string") {
+          if (value.startsWith("{ ")) value = "{" + value.slice(2);
+          if (value.endsWith(" }")) value = value.slice(0, -2) + "}";
+        }
+        selected[name] = value;
+      });
+
+      return { paramNames: names, paramOptions: optionsMap, selectedParams: selected };
+    } catch (e) {
+      console.error("Failed to parse variant_info_json:", e);
+      // Fall through to legacy string parsing
+    }
+  }
+
+  // Legacy: parse string-based variant_info
   const row = statusData.value.find(
     (item) =>
       item.host === selectedHost.value && item.status_type === "variant_info"
@@ -1240,23 +1286,11 @@ const paramsForTask = computed(() => {
   const argsBlock = extractBlock(fullStr, "loader_args {");
   const tokens = argsBlock ? splitByTopLevelSpaces(argsBlock) : [];
   const selectedParams = {};
-  // paramNames.forEach((name, i) => {
-  //   selectedParams[name] = tokens[i] || "";
-  // });
 
   paramNames.forEach((name, i) => {
     let value = tokens[i] || "";
-
-    // Remove space after '{' at the beginning
-    if (value.startsWith("{ ")) {
-      value = "{" + value.slice(2);
-    }
-
-    // Remove space before '}' at the end
-    if (value.endsWith(" }")) {
-      value = value.slice(0, -2) + "}";
-    }
-
+    if (value.startsWith("{ ")) value = "{" + value.slice(2);
+    if (value.endsWith(" }")) value = value.slice(0, -2) + "}";
     selectedParams[name] = value;
   });
 
