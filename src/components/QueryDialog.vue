@@ -833,6 +833,12 @@ const mappingsTable = [
     type: "float",
     defaultAlias: "nonmatch_transparency",
   },
+  {
+    name: "plank_restitution",
+    path: "(trialinfo->'stiminfo'->>'plank_restitution')",
+    type: "float",
+    defaultAlias: "plank_restitution",
+  },
 ];
 
 function removeAllFilters() {

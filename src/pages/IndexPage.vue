@@ -1093,7 +1093,7 @@ const newsubjectName = ref("");
 const currentTime = ref(Date.now());
 const server_ip = window.location.hostname; // use this if the server is running on the same machine as the client
 // const server_ip = "10.2.145.85"; // use this for testing
-// const server_ip = "hb-server"; // or this
+// const server_ip = "hb-server"; // or this for testing
 const ws_port = "8080";
 const sql_table_response = ref([]);
 const listboxOptions = ref({
@@ -1111,6 +1111,7 @@ const fields = [
   { label: "nhit", value: "nhit" },
   { label: "nplanks", value: "nplanks" },
   { label: "nonmatch_transparency", value: "nonmatch_transparency" },
+  { label: "plank_restitution", value: "plank_restitution" },
 ];
 
 function openParamsDialog(hostAddress) {
@@ -1424,7 +1425,7 @@ function buildParamsCommand(params) {
 
   // For each parameter
   for (const [paramName, paramVal] of Object.entries(params)) {
-    command += `${paramName} ${paramVal} `;
+    command += `${paramName} {${String(paramVal).trim()}} `;
   }
 
   // Remove trailing space and add closing brace
