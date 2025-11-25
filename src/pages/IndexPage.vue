@@ -1112,6 +1112,7 @@ const fields = [
   { label: "nplanks", value: "nplanks" },
   { label: "nonmatch_transparency", value: "nonmatch_transparency" },
   { label: "plank_restitution", value: "plank_restitution" },
+  { label: "shape_choices", value: "shape_choices" },
 ];
 
 function openParamsDialog(hostAddress) {

@@ -839,6 +839,12 @@ const mappingsTable = [
     type: "float",
     defaultAlias: "plank_restitution",
   },
+  {
+    name: "shape_choices",
+    path: "(trialinfo->'stiminfo'->>'shape_choices')",
+    type: "text",
+    defaultAlias: "shape_choices",
+  },
 ];
 
 function removeAllFilters() {
