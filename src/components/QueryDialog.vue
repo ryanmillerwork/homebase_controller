@@ -615,11 +615,12 @@ const chartSeries = computed(() => {
   const seriesMap = new Map();
 
   localRows.value.forEach((row) => {
-    // Create a unique key for the series
+    // Create a unique key for the series; keep 0 values but drop null/undefined/empty
     const seriesKey = sortingColumns
       .map((col) => row[col.name])
-      .filter(Boolean) // Remove null/undefined values
-      .join(" - ");
+      .filter((val) => val !== null && val !== undefined && val !== "")
+      .join(" - ")
+      .trim();
 
     // If the key is empty, skip this row
     if (!seriesKey) return;

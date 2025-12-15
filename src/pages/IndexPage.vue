@@ -1093,7 +1093,7 @@ const newsubjectName = ref("");
 const currentTime = ref(Date.now());
 const server_ip = window.location.hostname; // use this if the server is running on the same machine as the client
 // const server_ip = "10.2.145.85"; // use this for testing
-// const server_ip = "hb-server"; // or this for testing
+//const server_ip = "hb-server"; // or this for testing
 const ws_port = "8080";
 const sql_table_response = ref([]);
 const listboxOptions = ref({
@@ -1878,7 +1878,92 @@ function calculateBatteryPercent(maxV, currentV) {
   }
 }
 
+function getPowermonPct(host) {
+  // Prefer explicit powermon source + pct type
+  const entry =
+    statusData.value.find(
+      (e) =>
+        e.host === host &&
+        e.status_source === "powermon" &&
+        e.status_type === "pct"
+    ) ||
+    // Fallback to alternative naming conventions if present
+    statusData.value.find(
+      (e) =>
+        e.host === host &&
+        ["powermon_pct", "powermon.pct", "powermon/pct"].includes(e.status_type)
+    );
+  if (!entry) return null;
+  const pct = parseFloat(entry.status_value);
+  if (isNaN(pct)) return null;
+  return Math.max(0, Math.min(100, pct));
+}
+
+function getPowermonCharging(host) {
+  // Prefer explicit powermon source + charging type
+  const entry =
+    statusData.value.find(
+      (e) =>
+        e.host === host &&
+        e.status_source === "powermon" &&
+        e.status_type === "charging"
+    ) ||
+    // Fallback to alternative naming conventions if present
+    statusData.value.find(
+      (e) =>
+        e.host === host &&
+        [
+          "powermon_charging",
+          "powermon.charging",
+          "powermon/charging",
+        ].includes(e.status_type)
+    );
+  if (!entry) return null;
+  const val = entry.status_value;
+  if (typeof val === "boolean") return val;
+  const num = Number(val);
+  if (!isNaN(num)) return num === 1;
+  return String(val).toLowerCase() === "true";
+}
+
+function getPowermonWatts(host) {
+  // Prefer explicit powermon source + watts type "w"
+  const entry =
+    statusData.value.find(
+      (e) =>
+        e.host === host &&
+        e.status_source === "powermon" &&
+        e.status_type === "w"
+    ) ||
+    // Fallback to alternative naming conventions if present
+    statusData.value.find(
+      (e) =>
+        e.host === host &&
+        ["powermon_w", "powermon.w", "powermon/w"].includes(e.status_type)
+    );
+  if (!entry) return null;
+  const w = parseFloat(entry.status_value);
+  if (isNaN(w)) return null;
+  return w;
+}
+
 function getBatteryLevel(host) {
+  // Prefer new powermon pct if available
+  const powPct = getPowermonPct(host);
+  if (powPct !== null) {
+    const totalBatteryLifeHours = 11;
+    const timeRemainingHours = (powPct / 100) * totalBatteryLifeHours;
+    const watts = getPowermonWatts(host);
+    if (watts !== null) {
+      return `${powPct.toFixed(0)}% (${timeRemainingHours.toFixed(
+        1
+      )} hours remaining, ${watts.toFixed(1)} W)`;
+    }
+    return `${powPct.toFixed(0)}% (${timeRemainingHours.toFixed(
+      1
+    )} hours remaining)`;
+  }
+
   const currentEntry = statusData.value.find(
     (entry) => entry.host === host && entry.status_type === "24v-v"
   );
@@ -1905,6 +1990,48 @@ function getBatteryLevel(host) {
 }
 
 function getBatteryIcon(host) {
+  // Prefer new powermon pct + charging if available
+  const powPct = getPowermonPct(host);
+  if (powPct !== null) {
+    let isCharging = getPowermonCharging(host);
+    if (isCharging === null) {
+      // Fall back to legacy charging signals if powermon charging missing
+      const chargingEntry = statusData.value.find(
+        (entry) => entry.host === host && entry.status_type === "charging"
+      );
+      if (chargingEntry) {
+        isCharging = chargingEntry.status_value === "true";
+      } else {
+        const current = Math.abs(
+          parseFloat(
+            statusData.value.find(
+              (entry) => entry.host === host && entry.status_type === "24v-a"
+            )?.status_value || "0"
+          )
+        );
+        isCharging = current >= 0.1;
+      }
+    }
+
+    if (!isCharging) {
+      if (powPct > 88) return "battery_full";
+      else if (powPct > 76) return "battery_6_bar";
+      else if (powPct > 64) return "battery_5_bar";
+      else if (powPct > 52) return "battery_4_bar";
+      else if (powPct > 40) return "battery_3_bar";
+      else if (powPct > 28) return "battery_2_bar";
+      else if (powPct > 16) return "battery_1_bar";
+      else return "battery_alert";
+    } else {
+      if (powPct > 88) return "battery_charging_full";
+      else if (powPct > 76) return "sym_o_battery_charging_90";
+      else if (powPct > 64) return "sym_o_battery_charging_80";
+      else if (powPct > 52) return "sym_o_battery_charging_50";
+      else if (powPct > 40) return "sym_o_battery_charging_30";
+      else return "sym_o_battery_charging_20";
+    }
+  }
+
   const currentEntry = statusData.value.find(
     (entry) => entry.host === host && entry.status_type === "24v-v"
   );
